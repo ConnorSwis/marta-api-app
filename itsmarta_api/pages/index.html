@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>HTMX Circle Buttons Example</title>
+    <script src="https://unpkg.com/htmx.org/dist/htmx.js"></script>
+
+    <style>
+      body {
+        font-family: sans-serif;
+        padding-top: 0.5rem;
+        margin: 0;
+      }
+
+      /* A container for all the line buttons */
+      .button-container {
+        display: flex;
+        justify-content: center; /* center horizontally */
+        gap: 1rem;
+        margin-bottom: 1rem; /* spacing below the buttons */
+      }
+
+      /* Common styling for all line buttons */
+      .circle-button {
+        display: inline-block;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        border: none;
+        outline: none;
+        cursor: pointer;
+        font-weight: bold;
+        color: #fff;
+        text-align: center;
+        vertical-align: middle;
+        line-height: 50px; /* center text vertically */
+      }
+      .circle-button:hover {
+        opacity: 0.8; /* a little hover effect */
+      }
+
+      /* Add the .selected class to outline the chosen circle */
+      .circle-button.selected {
+        outline: 4px solid #333;
+      }
+
+      /* Individual line colors */
+      .red-line {
+        background-color: #ff0000;
+      }
+      .gold-line {
+        background-color: gold;
+        color: #000; /* better contrast on gold background */
+      }
+      .blue-line {
+        background-color: #0000ff;
+      }
+      .green-line {
+        background-color: #008000;
+      }
+
+      /* Center text inside mainContent */
+      #mainContent {
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="button-container">
+      <button
+        class="circle-button red-line"
+        hx-get="/schedule/red"
+        hx-target="#mainContent"
+        hx-swap="innerHTML"
+      ></button>
+
+      <button
+        class="circle-button gold-line"
+        hx-get="/schedule/gold"
+        hx-target="#mainContent"
+        hx-swap="innerHTML"
+      ></button>
+
+      <button
+        class="circle-button blue-line"
+        hx-get="/schedule/blue"
+        hx-target="#mainContent"
+        hx-swap="innerHTML"
+      ></button>
+
+      <button
+        class="circle-button green-line"
+        hx-get="/schedule/green"
+        hx-target="#mainContent"
+        hx-swap="innerHTML"
+      ></button>
+    </div>
+
+    <!-- This is the area that gets replaced by each HTMX request -->
+    <div id="mainContent">
+      <p>Select a line to see the schedule.</p>
+    </div>
+
+    <script>
+      // Highlight the selected button
+      document.querySelectorAll(".circle-button").forEach((button) => {
+        button.addEventListener("click", (event) => {
+          // Remove .selected from any button that already has it
+          document
+            .querySelectorAll(".circle-button.selected")
+            .forEach((btn) => btn.classList.remove("selected"));
+
+          // Add .selected to the clicked button
+          event.currentTarget.classList.add("selected");
+        });
+      });
+    </script>
+  </body>
+</html>
