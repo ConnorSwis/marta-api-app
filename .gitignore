@@ -1,2 +1,7 @@
 itsmarta_api/schedules/
 __pycache__/
+*.sqlite
+*.bin
+.env
+node_modules/
+*.json

@@ -1,0 +1,55 @@
+<!-- reload every 30 seconds -->
+<div
+  id="stations"
+  class="flex flex-wrap justify-center gap-4"
+  hx-get="{{ context.url }}"
+  hx-swap="outerHTML"
+  hx-trigger="every 30s"
+>
+  {% set trains = context.trains %} {% for station, station_trains in trains |
+  groupby('station') %} {% set sorted_trains = station_trains |
+  sort(attribute='waiting_seconds') %}
+  <div
+    class="px-6 pt-3 pb-6 bg-white rounded-lg shadow station-card w-72"
+    data-station-name="{{ station | replace(' STATION', '') | lower }}"
+  >
+    <h2
+      class="mb-2 text-lg font-semibold text-center"
+      data-station-name="{{ station | replace(' STATION', '') | lower }}"
+      onclick="setStationFilter(event)"
+    >
+      {{ station | replace(' STATION', '') }}
+    </h2>
+    <ul class="space-y-2">
+      {% for train in sorted_trains[:6] %}
+      <li class="flex items-center justify-between gap-2">
+        <div class="flex items-center space-x-2">
+          <div
+            class="flex items-center justify-center w-6 h-6 text-xs font-bold text-white py-1 px-3 {{ 'bg-red-500' if train.line == 'RED' else '' }} {{ 'bg-blue-500' if train.line == 'BLUE' else '' }} {{ 'bg-green-500' if train.line == 'GREEN' else '' }} {{ 'bg-yellow-500' if train.line == 'GOLD' else '' }}"
+          >
+            {{ train.direction[0] }}
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-gray-800">
+              {{ train.destination }}
+            </p>
+          </div>
+        </div>
+        <div
+          class="flex items-center space-x-1 text-sm font-semibold text-gray-800"
+        >
+          {% if train.real_time %}
+          <img
+            src="/static/images/real-time.png"
+            alt="Real-time Image"
+            class="w-1.5 h-1.5 mb-1"
+          />
+          {% endif %}
+          <span>{{ train.waiting_time }}</span>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endfor %}
+</div>

@@ -1,24 +1,30 @@
-import os
+from os import getenv
 from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()
 
 __all__ = ['config']
 
 
 class Config:
     def __init__(self):
-        self.red_line_website = os.getenv(
+        self.red_line_website = getenv(
             'RED_LINE_WEBSITE', "https://itsmarta.com/Red-Line.aspx")
-        self.gold_line_website = os.getenv(
+        self.gold_line_website = getenv(
             'GOLD_LINE_WEBSITE', "https://itsmarta.com/Gold-Line.aspx")
-        self.green_line_website = os.getenv(
+        self.green_line_website = getenv(
             'GREEN_LINE_WEBSITE', "https://itsmarta.com/Green-Line.aspx")
-        self.blue_line_website = os.getenv(
+        self.blue_line_website = getenv(
             'BLUE_LINE_WEBSITE', "https://itsmarta.com/Blue-Line.aspx")
 
         self.schedule_dir = Path(__file__).parent / \
-            os.getenv('SCHEDULE_DIR', 'schedules')
+            getenv('SCHEDULE_DIR', 'schedules')
         if not self.schedule_dir.exists():
             self.schedule_dir.mkdir()
+
+        self.marta_cache_expire = int(getenv('MARTA_CACHE_EXPIRE', 30))
+        self.marta_api_key = getenv('MARTA_API_KEY')
 
 
 config = Config()

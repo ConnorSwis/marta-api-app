@@ -1,5 +1,5 @@
-<div id="{{request.line}}-schedule-snippet">
-  {% set selector = "#" ~ request.line ~ "-schedule-snippet" %}
+<div id="{{context.line}}-schedule-snippet">
+  {% set selector = "#" ~ context.line ~ "-schedule-snippet" %}
 
   <!-- Your existing styles stay the same. -->
   <style>
@@ -82,7 +82,7 @@
       border: 1px solid #ccc;
       overflow: auto;
       max-width: min(calc(100vw - 50px), 800px);
-      max-height: min(calc(100vh - 300px), 800px);
+      max-height: min(max(calc(100vh - 300px), 400px), 800px);
     }
 
     {{ selector }} .schedule-table {
@@ -128,7 +128,7 @@
 
   <main>
     {% set days = ["weekday", "saturday", "sunday"] %} {% set line_lower =
-    request.line|lower %} {% if line_lower in ["red", "gold"] %} {% set
+    context.line|lower %} {% if line_lower in ["red", "gold"] %} {% set
     direction1 = "northbound" %} {% set direction2 = "southbound" %} {% else %}
     {% set direction1 = "eastbound" %} {% set direction2 = "westbound" %} {%
     endif %}
@@ -165,7 +165,7 @@
 
           <div id="{{ direction1 }}-{{ day }}" class="direction-content active">
             <div class="schedule-container">
-              {% set schedule = request.schedule[day][direction1] %}
+              {% set schedule = context.schedule[day][direction1] %}
               <table class="schedule-table">
                 <thead class="schedule-thead">
                   <tr class="schedule-tr">
@@ -194,7 +194,7 @@
 
           <div id="{{ direction2 }}-{{ day }}" class="direction-content">
             <div class="schedule-container">
-              {% set schedule = request.schedule[day][direction2] %}
+              {% set schedule = context.schedule[day][direction2] %}
               <table class="schedule-table">
                 <thead class="schedule-thead">
                   <tr class="schedule-tr">

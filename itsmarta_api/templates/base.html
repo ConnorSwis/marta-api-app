@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en" class="m-0 p0 overscroll-none">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}{% endblock %}</title>
+    <script src="https://unpkg.com/htmx.org/dist/htmx.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      #body {
+        min-height: calc(100vh - 64px);
+      }
+    </style>
+  </head>
+  <body class="h-full m-0 p0 overscroll-none">
+    <nav class="h-16 text-white bg-gray-800">
+      <ul class="flex items-center justify-center h-16 gap-4">
+        <li>
+          <button
+            hx-get="/htmx/arrivals"
+            hx-target="#body"
+            hx-swap="outerHTML"
+            class="hover:underline"
+            data-nav="arrivals"
+          >
+            Train Arrivals
+          </button>
+        </li>
+        <li>
+          <button
+            hx-get="/htmx/schedules"
+            hx-target="#body"
+            hx-swap="outerHTML"
+            class="hover:underline"
+            data-nav="schedules"
+          >
+            Train Schedules
+          </button>
+        </li>
+      </ul>
+    </nav>
+    <main
+      id="body"
+      class="flex-grow h-full"
+      hx-get="/htmx/schedules"
+      hx-trigger="load"
+      hx-swap="outerHTML"
+    ></main>
+  </body>
+</html>
