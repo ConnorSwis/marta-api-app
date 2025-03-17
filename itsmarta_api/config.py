@@ -25,6 +25,7 @@ class Config:
 
         self.marta_cache_expire = int(getenv('MARTA_CACHE_EXPIRE', 30))
         self.marta_api_key = getenv('MARTA_API_KEY')
+        self.domain = getenv('DOMAIN', '/')
 
 
 config = Config()

@@ -12,6 +12,7 @@ from fastapi.templating import Jinja2Templates
 
 from itsmarta_api.schedules import Schedules
 from itsmarta_api.routes import htmx_routes
+from itsmarta_api.middleware.context import ContextMiddleware
 
 
 schedules = Schedules()
@@ -28,7 +29,6 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 templates = Jinja2Templates(directory="itsmarta_api/templates")
-
 app.mount("/static", StaticFiles(directory="itsmarta_api/static"), name="static")
 htmx_routes.init_routes(app, schedules=schedules,
                         templates=templates, marta=marta)
@@ -36,9 +36,11 @@ htmx_routes.init_routes(app, schedules=schedules,
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
+    print(request.state.domain)
     return templates.TemplateResponse("base.html", {"request": request})
+
+app.middleware("http")(ContextMiddleware.dispatch)
 
 
 def main():
-
     uvicorn.run("itsmarta_api:app", host="0.0.0.0", port=8000, reload=True)
