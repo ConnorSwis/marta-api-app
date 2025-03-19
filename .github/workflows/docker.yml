@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - dev
   workflow_dispatch:
 
 jobs:
@@ -24,9 +25,18 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
+      - name: Determine Docker Tag
+        id: docker_tag
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/master" ]]; then
+            echo "TAG=latest" >> $GITHUB_ENV
+          elif [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
+            echo "TAG=dev" >> $GITHUB_ENV
+          fi
+
       - name: Build and push image
         uses: docker/build-push-action@v5
         with:
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/marta-api-app:latest
+          tags: ${{ secrets.DOCKER_USERNAME }}/marta-api-app:${{ env.TAG }}
           platforms: linux/amd64,linux/arm64,linux/arm/v7
