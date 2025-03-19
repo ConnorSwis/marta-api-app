@@ -1,10 +1,11 @@
-FROM python:3.13-slim-bullseye 
+FROM python:3.12-slim-bullseye
 
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
-    python3-dev \
+    gcc \
+    g++ \
     libxml2-dev \
     libxslt-dev \
     libffi-dev \
@@ -15,11 +16,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN python -m venv /venv
 ENV PATH="/venv/bin:$PATH"
 
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel
-
 COPY requirements.txt .
 
-RUN pip install --no-cache-dir --prefer-binary -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip pip install --prefer-binary --no-build-isolation -r requirements.txt
 
 COPY . .
 
