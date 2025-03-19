@@ -36,7 +36,6 @@ htmx_routes.init_routes(app, schedules=schedules,
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    print(request.state.domain)
     return templates.TemplateResponse("base.html", {"request": request})
 
 app.middleware("http")(ContextMiddleware.dispatch)
