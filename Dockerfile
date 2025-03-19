@@ -16,9 +16,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN python -m venv /venv
 ENV PATH="/venv/bin:$PATH"
 
-COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
-RUN --mount=type=cache,target=/root/.cache/pip pip install --prefer-binary --no-build-isolation -r requirements.txt
+COPY requirements.txt .
+RUN pip install --no-cache-dir --prefer-binary -r requirements.txt
 
 COPY . .
 
