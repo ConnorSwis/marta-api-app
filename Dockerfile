@@ -1,4 +1,4 @@
-FROM python:3.13-slim
+FROM python:3.13-slim-bullseye
 
 WORKDIR /app
 
@@ -13,9 +13,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+RUN python -m venv /venv
+
+ENV PATH="/venv/bin:$PATH"
+
 COPY requirements.txt .
 
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
