@@ -39,10 +39,7 @@ def init_routes(app, *, schedules: Schedules, marta: MARTA, templates: Jinja2Tem
         direction: str = None,
         station: str = None
     ):
-        # Fetch all trains
         trains = trains_to_dicts(marta.get_trains())
-
-        # Apply filters if query parameters are provided
         if line:
             trains = [t for t in trains if t['line'].lower() == line.lower()]
         if direction:
@@ -51,12 +48,11 @@ def init_routes(app, *, schedules: Schedules, marta: MARTA, templates: Jinja2Tem
         if station:
             trains = [t for t in trains if t['station'].lower() ==
                       station.lower()]
-
-        # pass the url with the parameters to the template
+        url = request.url.path + ("?" + request.url.query if request.url.query else "")
         return templates.TemplateResponse(
             "arrivals/components/stations.html",
             {"request": request, "context": {
-                "trains": trains, "url": str(request.url)}}
+                "trains": trains, "url": url}}
         )
 
     @htmx_router.get("/arrivals/", response_class=HTMLResponse)

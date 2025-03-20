@@ -3,34 +3,34 @@
     <button
       id="unselect-button"
       class="relative w-12 h-12 font-bold text-center text-white rounded-full hover:opacity-80 focus:outline-none focus:ring-4 focus:ring-gray-700 quadrant-bg"
-      hx-get="/htmx/arrivals/component/stations"
+      hx-get="{{ request.state.domain }}/htmx/arrivals/component/stations"
       hx-target="#stations"
       hx-swap="outerHTML"
     ></button>
     <button
       class="w-12 h-12 rounded-full font-bold text-white text-center leading-[3rem] bg-red-500 hover:opacity-80 focus:outline-none focus:ring-4 focus:ring-gray-700"
-      hx-get="/htmx/arrivals/component/stations?line=red"
+      hx-get="{{ request.state.domain }}/htmx/arrivals/component/stations?line=red"
       hx-target="#stations"
       hx-swap="outerHTML"
     ></button>
 
     <button
       class="w-12 h-12 rounded-full font-bold text-white text-center leading-[3rem] bg-yellow-400 hover:opacity-80 focus:outline-none focus:ring-4 focus:ring-gray-700"
-      hx-get="/htmx/arrivals/component/stations?line=gold"
+      hx-get="{{ request.state.domain }}/htmx/arrivals/component/stations?line=gold"
       hx-target="#stations"
       hx-swap="outerHTML"
     ></button>
 
     <button
       class="w-12 h-12 rounded-full font-bold text-white text-center leading-[3rem] bg-blue-500 hover:opacity-80 focus:outline-none focus:ring-4 focus:ring-gray-700"
-      hx-get="/htmx/arrivals/component/stations?line=blue"
+      hx-get="{{ request.state.domain }}/htmx/arrivals/component/stations?line=blue"
       hx-target="#stations"
       hx-swap="outerHTML"
     ></button>
 
     <button
       class="w-12 h-12 rounded-full font-bold text-white text-center leading-[3rem] bg-green-600 hover:opacity-80 focus:outline-none focus:ring-4 focus:ring-gray-700"
-      hx-get="/htmx/arrivals/component/stations?line=green"
+      hx-get="{{ request.state.domain }}/htmx/arrivals/component/stations?line=green"
       hx-target="#stations"
       hx-swap="outerHTML"
     ></button>
@@ -65,7 +65,7 @@
     id="stations"
     class="text-center"
     hx-trigger="load"
-    hx-get="/htmx/arrivals/component/stations/"
+    hx-get="{{ request.state.domain }}/htmx/arrivals/component/stations/"
     hx-swap="outerHTML"
   ></div>
   <style>

@@ -1,4 +1,3 @@
-from fastapi.responses import RedirectResponse
 from itsmarta_api.marta.real_time import MARTA
 from itsmarta_api.config import config
 from contextlib import asynccontextmanager

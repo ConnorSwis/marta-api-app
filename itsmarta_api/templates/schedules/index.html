@@ -2,7 +2,7 @@
   <div class="flex justify-center gap-4 mb-4">
     <button
       class="w-12 h-12 rounded-full font-bold text-white text-center leading-[3rem] bg-red-500 hover:opacity-80 focus:outline-none focus:ring-4 focus:ring-gray-700 ring-4 ring-gray-700"
-      hx-get="/htmx/schedule/red"
+      hx-get="{{ request.state.domain }}/htmx/schedule/red"
       hx-target="#mainContent"
       hx-swap="innerHTML"
       hx-trigger="load"
@@ -10,21 +10,21 @@
 
     <button
       class="w-12 h-12 rounded-full font-bold text-black text-center leading-[3rem] bg-yellow-400 hover:opacity-80 focus:outline-none focus:ring-4 focus:ring-gray-700"
-      hx-get="/htmx/schedule/gold"
+      hx-get="{{ request.state.domain }}/htmx/schedule/gold"
       hx-target="#mainContent"
       hx-swap="innerHTML"
     ></button>
 
     <button
       class="w-12 h-12 rounded-full font-bold text-white text-center leading-[3rem] bg-blue-500 hover:opacity-80 focus:outline-none focus:ring-4 focus:ring-gray-700"
-      hx-get="/htmx/schedule/blue"
+      hx-get="{{ request.state.domain }}/htmx/schedule/blue"
       hx-target="#mainContent"
       hx-swap="innerHTML"
     ></button>
 
     <button
       class="w-12 h-12 rounded-full font-bold text-white text-center leading-[3rem] bg-green-600 hover:opacity-80 focus:outline-none focus:ring-4 focus:ring-gray-700"
-      hx-get="/htmx/schedule/green"
+      hx-get="{{ request.state.domain }}/htmx/schedule/green"
       hx-target="#mainContent"
       hx-swap="innerHTML"
     ></button>
@@ -35,20 +35,16 @@
   </div>
 
   <script>
-    // Highlight the selected button
     document.querySelectorAll(".w-12").forEach((button) => {
       button.addEventListener("click", (event) => {
-        // Remove focus ring from any button that already has it
         document
           .querySelectorAll(".ring-4")
           .forEach((btn) => btn.classList.remove("ring-4", "ring-gray-700"));
 
-        // Add focus ring to the clicked button
         event.currentTarget.classList.add("ring-4", "ring-gray-700");
       });
     });
 
-    // Trigger the red button's content load on page load
     window.addEventListener("DOMContentLoaded", () => {
       const redButton = document.querySelector(".bg-red-500");
       redButton.click();

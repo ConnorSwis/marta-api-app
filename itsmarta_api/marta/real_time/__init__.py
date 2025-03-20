@@ -79,12 +79,10 @@ def _filter_response(response: dict, filters: dict) -> List[dict]:
     for item in response:
         valid = True
         for filter_key, filter_value in filters.items():
-            if filter_value:  # ignore if the filter value doesn't exist
-                # don't penalize if item doesn't have a filter_key
+            if filter_value:
                 if not item.get(filter_key):
                     pass
                 elif str(item[filter_key]).lower() != str(filter_value).lower():
-                    # lower all values to avoid case issues
                     valid = False
         if valid:
             valid_items.append(item)
@@ -120,8 +118,6 @@ class MARTA:
         :rtype: List[Train]
         """
         data = _get_data(endpoint=_TRAIN_PATH, api_key=api_key)
-        # print(data)
-        # print(api_key)
         filters = {
             'LINE': line,
             'DIRECTION': _convert_direction(user_direction=direction, vehicle_type='train'),
@@ -130,7 +126,6 @@ class MARTA:
         }
         matching_data = _filter_response(response=data, filters=filters)
         return [Train(t) for t in matching_data]
-        # return matching_data
 
     """@require_api_key
     def get_buses(self,

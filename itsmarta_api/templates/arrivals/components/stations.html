@@ -2,13 +2,15 @@
 <div
   id="stations"
   class="flex flex-wrap justify-center gap-4"
-  hx-get="{{ context.url }}"
+  hx-get="{{ request.state.domain }}{{ context.url }}"
   hx-swap="outerHTML"
   hx-trigger="every 30s"
 >
-  {% set trains = context.trains %} {% for station, station_trains in trains |
-  groupby('station') %} {% set sorted_trains = station_trains |
-  sort(attribute='waiting_seconds') %}
+  {% set trains = context.trains %}
+  
+  {% for station, station_trains in trains | groupby('station') %}
+  
+  {% set sorted_trains = station_trains | sort(attribute='waiting_seconds') %}
   <div
     class="px-6 pt-3 pb-6 bg-white rounded-lg shadow station-card w-72"
     data-station-name="{{ station | replace(' STATION', '') | lower }}"
@@ -40,7 +42,7 @@
         >
           {% if train.real_time %}
           <img
-            src="/static/images/real-time.png"
+            src="{{ request.state.domain }}/static/images/real-time.png"
             alt="Real-time Image"
             class="w-1.5 h-1.5 mb-1"
           />
