@@ -20,6 +20,7 @@ BUS_SNAPSHOT_MIN_INTERVAL_SECONDS=8
 BUS_SNAPSHOT_RETENTION_HOURS=336
 BUS_SNAPSHOT_COMPRESSION_LEVEL=6
 BUS_POSITIONS_POLL_SECONDS=10
+ARRIVALS_POLL_SECONDS=10
 DOMAIN=/
 ```
 
@@ -44,7 +45,9 @@ Then open `http://localhost:8000`.
 - Arrivals and schedule views are loaded with HTMX fragments.
 - Arrivals auto-refresh every 30 seconds while preserving active filters.
 - Bus map auto-refreshes every 10 seconds and supports route/vehicle filters.
+- Server runs an always-on arrivals poller and serves `/htmx/arrivals/component/stations` from cached poll results.
 - Server runs an always-on bus poller and serves `/htmx/buses/positions` from cached poll results.
+- Reliability snapshots are captured from the arrivals poller (not per-page request) and power the scoreboard.
 - Unfiltered bus polls are stored as compact binary snapshots for low-bandwidth historical replay.
 - Schedule views support explicit refresh from MARTA source pages.
 - Reliability scoreboard auto-refreshes every 30 seconds and supports line/day/hour/lookback filters.

@@ -11,6 +11,7 @@ from fastapi.templating import Jinja2Templates
 from itsmarta_api.marta.realtime import MARTA
 from itsmarta_api.settings import config
 from itsmarta_api.services.rail_schedules import Schedules
+from itsmarta_api.services.arrivals_poller import ArrivalsPoller
 from itsmarta_api.services.bus_incidents import BusIncidentTracker
 from itsmarta_api.services.bus_positions_poller import BusPositionsPoller
 from itsmarta_api.services.bus_snapshots import BusSnapshotStore
@@ -34,6 +35,11 @@ bus_snapshots = BusSnapshotStore(
     min_interval_seconds=config.bus_snapshot_min_interval_seconds,
     retention_hours=config.bus_snapshot_retention_hours,
     compression_level=config.bus_snapshot_compression_level,
+)
+arrivals_poller = ArrivalsPoller(
+    marta=marta,
+    reliability=reliability,
+    interval_seconds=config.arrivals_poll_seconds,
 )
 bus_positions_poller = BusPositionsPoller(
     marta=marta,
@@ -67,12 +73,20 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.exception("Failed to start bus positions poller during startup: %s", e)
     try:
+        await arrivals_poller.start()
+    except Exception as e:
+        logger.exception("Failed to start arrivals poller during startup: %s", e)
+    try:
         yield
     finally:
         try:
             await bus_positions_poller.stop()
         except Exception as e:
             logger.exception("Failed to stop bus positions poller during shutdown: %s", e)
+        try:
+            await arrivals_poller.stop()
+        except Exception as e:
+            logger.exception("Failed to stop arrivals poller during shutdown: %s", e)
 
 app = FastAPI(title="MARTA Tracker", lifespan=lifespan)
 templates = Jinja2Templates(directory="itsmarta_api/templates")
@@ -82,11 +96,11 @@ init_routes(
     app,
     schedules=schedules,
     templates=templates,
-    marta=marta,
     reliability=reliability,
     bus_incidents=bus_incidents,
     bus_snapshots=bus_snapshots,
     bus_positions_poller=bus_positions_poller,
+    arrivals_poller=arrivals_poller,
 )
 
 

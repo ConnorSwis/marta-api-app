@@ -8,10 +8,9 @@ from fastapi.requests import Request
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.templating import Jinja2Templates
 
-from itsmarta_api.marta.realtime import MARTA
-from itsmarta_api.marta.realtime.exceptions import APIKeyError, InvalidDirectionError
 from itsmarta_api.marta.realtime.models import BusPosition, Train
 from itsmarta_api.services.rail_schedules import Schedules
+from itsmarta_api.services.arrivals_poller import ArrivalsPoller, filter_trains
 from itsmarta_api.services.bus_incidents import BusIncidentTracker, BusSpeedIncident
 from itsmarta_api.services.bus_snapshots import (
     BusSnapshotStore,
@@ -60,12 +59,12 @@ def init_routes(
     app,
     *,
     schedules: Schedules,
-    marta: MARTA,
     templates: Jinja2Templates,
     reliability: ReliabilityTracker,
     bus_incidents: BusIncidentTracker,
     bus_snapshots: BusSnapshotStore,
     bus_positions_poller: BusPositionsPoller,
+    arrivals_poller: ArrivalsPoller,
 ):
     htmx_router = APIRouter(prefix="/htmx")
     schedule_lookup = {
@@ -133,27 +132,15 @@ def init_routes(
     ):
         line_filter = _normalize_line(line)
         direction_filter = _normalize_direction(direction)
-        should_record_snapshot = not any([line_filter, direction_filter, station, q])
-
-        error_message: str | None = None
-        try:
-            trains = await run_in_threadpool(
-                marta.get_trains,
-                line=line_filter.upper() if line_filter else None,
-                direction=direction_filter,
-            )
-        except (APIKeyError, InvalidDirectionError) as exc:
-            trains = []
-            error_message = str(exc)
-        except Exception:
-            trains = []
-            error_message = "Could not load train arrivals. Please try again in a moment."
-
-        if should_record_snapshot and trains:
-            try:
-                await run_in_threadpool(reliability.record_snapshot, trains)
-            except Exception:
-                pass
+        state = await arrivals_poller.get_state()
+        trains = filter_trains(
+            state.trains,
+            line=line_filter,
+            direction=direction_filter,
+        )
+        error_message: str | None = state.error
+        if state.fetched_at is None:
+            error_message = "Arrivals poller is warming up. Please try again in a moment."
 
         normalized_station = station.strip().lower() if station else None
         normalized_query = q.strip().lower() if q else None
@@ -206,7 +193,11 @@ def init_routes(
                     "station": station,
                     "query": q,
                     "per_station": per_station,
-                    "loaded_at": datetime.now().strftime("%I:%M:%S %p"),
+                    "loaded_at": (
+                        state.fetched_at.strftime("%I:%M:%S %p")
+                        if state.fetched_at
+                        else datetime.now().strftime("%I:%M:%S %p")
+                    ),
                 },
             },
         )

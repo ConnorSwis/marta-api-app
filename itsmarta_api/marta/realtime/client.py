@@ -76,10 +76,19 @@ def _convert_direction(
     raise InvalidDirectionError(direction_provided=normalized)
 
 
-def _get_data(endpoint: str, api_key: str) -> list[dict[str, Any]]:
+def _get_data(
+    endpoint: str,
+    api_key: str,
+    *,
+    bypass_cache: bool = False,
+) -> list[dict[str, Any]]:
     url = f"{_BASE_URL}{endpoint}?apiKey={api_key}"
     try:
-        response = requests.get(url, timeout=10)
+        if bypass_cache:
+            with requests_cache.disabled():
+                response = requests.get(url, timeout=10)
+        else:
+            response = requests.get(url, timeout=10)
     except requests.RequestException as exc:
         raise RuntimeError("Could not reach MARTA real-time API.") from exc
 
@@ -166,6 +175,7 @@ class MARTA:
         station: str | None = None,
         destination: str | None = None,
         direction: str | None = None,
+        bypass_cache: bool = False,
         api_key: str | None = None,
     ) -> List[Train]:
         """
@@ -175,10 +185,15 @@ class MARTA:
         :param station: Train station filter
         :param destination: Destination filter
         :param direction: Direction train is heading (N, S, E, or W)
+        :param bypass_cache: When true, bypass requests-cache and hit MARTA directly
         :param api_key: API key to override environment variable
         :return: list of Train objects
         """
-        data = _get_data(endpoint=_TRAIN_PATH, api_key=api_key)  # type: ignore[arg-type]
+        data = _get_data(
+            endpoint=_TRAIN_PATH,
+            api_key=api_key,  # type: ignore[arg-type]
+            bypass_cache=bypass_cache,
+        )
         filters = {
             "LINE": line,
             "DIRECTION": _convert_direction(

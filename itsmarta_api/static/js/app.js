@@ -697,11 +697,9 @@
         Number.parseInt(String(matchedPreset.sliderStep), 10) || 1,
       );
     }
-    const maxPreset = BUS_HISTORY_RANGE_PRESETS[BUS_HISTORY_RANGE_PRESETS.length - 1];
-    return Math.max(
-      1,
-      Number.parseInt(String(maxPreset.sliderStep), 10) || 1,
-    );
+    const maxPreset =
+      BUS_HISTORY_RANGE_PRESETS[BUS_HISTORY_RANGE_PRESETS.length - 1];
+    return Math.max(1, Number.parseInt(String(maxPreset.sliderStep), 10) || 1);
   }
 
   function setBusMode(mode) {
@@ -771,20 +769,24 @@
       return;
     }
     const firstEpoch = new Date(timeline[0].captured_at_utc).getTime();
-    const lastEpoch = new Date(timeline[timeline.length - 1].captured_at_utc).getTime();
+    const lastEpoch = new Date(
+      timeline[timeline.length - 1].captured_at_utc,
+    ).getTime();
     if (!Number.isFinite(firstEpoch) || !Number.isFinite(lastEpoch)) {
       speedNode.textContent = "";
       return;
     }
     const realTimeSpanMs = Math.max(0, lastEpoch - firstEpoch);
     const autoplaySpanMs =
-      Math.max(0, timeline.length - 1) * getHistoryAutoplayIntervalMs(timeline.length);
+      Math.max(0, timeline.length - 1) *
+      getHistoryAutoplayIntervalMs(timeline.length);
     if (realTimeSpanMs <= 0 || autoplaySpanMs <= 0) {
       speedNode.textContent = "";
       return;
     }
     const speedX = realTimeSpanMs / autoplaySpanMs;
-    const speedText = speedX >= 100 ? Math.round(speedX).toString() : speedX.toFixed(1);
+    const speedText =
+      speedX >= 100 ? Math.round(speedX).toString() : speedX.toFixed(1);
     speedNode.textContent = `(${speedText}x real-time)`;
   }
 
@@ -987,7 +989,10 @@
         const vehicleId = String(bus.vehicle_id || "").trim();
         const entityId = String(bus.entity_id || "").trim();
         const vehicleKey = vehicleId || (entityId ? `entity:${entityId}` : "");
-        if (!vehicleKey || (allowedVehicleIds && !allowedVehicleIds.has(vehicleKey))) {
+        if (
+          !vehicleKey ||
+          (allowedVehicleIds && !allowedVehicleIds.has(vehicleKey))
+        ) {
           return;
         }
 
@@ -997,7 +1002,11 @@
         };
         const point = [bus.latitude, bus.longitude];
         const lastPoint = entry.points[entry.points.length - 1];
-        if (!lastPoint || lastPoint[0] !== point[0] || lastPoint[1] !== point[1]) {
+        if (
+          !lastPoint ||
+          lastPoint[0] !== point[0] ||
+          lastPoint[1] !== point[1]
+        ) {
           if (
             lastPoint &&
             getDistanceMeters(lastPoint[0], lastPoint[1], point[0], point[1]) >
@@ -1536,9 +1545,8 @@
         : [];
       const snapshots = downsampleSnapshots(rawSnapshots);
       busMapState.historyTimeline = snapshots;
-      busMapState.historySliderStep = resolveHistorySliderStepForTimeline(
-        snapshots,
-      );
+      busMapState.historySliderStep =
+        resolveHistorySliderStepForTimeline(snapshots);
 
       if (!snapshots.length) {
         busMapState.historyIndex = -1;
@@ -1631,7 +1639,9 @@
     let startIndex = Math.max(0, snapshotIndex - BUS_TRACE_WINDOW + 1);
     if (Number.isFinite(endTime)) {
       for (let index = snapshotIndex; index >= 0; index -= 1) {
-        const snapshotTime = new Date(timeline[index].captured_at_utc).getTime();
+        const snapshotTime = new Date(
+          timeline[index].captured_at_utc,
+        ).getTime();
         if (!Number.isFinite(snapshotTime)) {
           continue;
         }
@@ -1651,11 +1661,12 @@
     );
     const allowedVehicleIds = new Set(
       visibleBuses
-        .map((bus) =>
-          String(bus.vehicle_id || "").trim() ||
-          (String(bus.entity_id || "").trim()
-            ? `entity:${String(bus.entity_id || "").trim()}`
-            : ""),
+        .map(
+          (bus) =>
+            String(bus.vehicle_id || "").trim() ||
+            (String(bus.entity_id || "").trim()
+              ? `entity:${String(bus.entity_id || "").trim()}`
+              : ""),
         )
         .filter(Boolean),
     );
@@ -1843,7 +1854,9 @@
       });
     }
 
-    const historyRangeSelect = document.querySelector("#buses-history-lookback");
+    const historyRangeSelect = document.querySelector(
+      "#buses-history-lookback",
+    );
     if (historyRangeSelect) {
       historyRangeSelect.addEventListener("change", () => {
         const selectedPreset = getSelectedHistoryRangePreset();

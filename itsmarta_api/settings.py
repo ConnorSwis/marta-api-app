@@ -48,6 +48,9 @@ class Config:
         self.bus_positions_poll_seconds = int(
             getenv('BUS_POSITIONS_POLL_SECONDS', '10')
         )
+        self.arrivals_poll_seconds = int(
+            getenv('ARRIVALS_POLL_SECONDS', '10')
+        )
         self.domain = getenv('DOMAIN', '/')
         self.static_version = getenv('STATIC_VERSION', '1')
 
