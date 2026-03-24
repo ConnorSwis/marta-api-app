@@ -10,8 +10,7 @@ __all__ = ['config']
 
 def _resolve_static_version(static_dir: Path) -> str:
     override = getenv('STATIC_VERSION')
-    if override and override.strip():
-        return override.strip()
+    override_token = override.strip() if override and override.strip() else None
 
     tracked_assets = [
         static_dir / 'css' / 'app.css',
@@ -27,8 +26,12 @@ def _resolve_static_version(static_dir: Path) -> str:
         digest.update(asset_path.read_bytes())
 
     if not any_asset_found:
-        return '1'
-    return digest.hexdigest()[:12]
+        return override_token or '1'
+
+    fingerprint = digest.hexdigest()[:12]
+    if override_token:
+        return f'{override_token}-{fingerprint}'
+    return fingerprint
 
 
 class Config:

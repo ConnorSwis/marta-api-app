@@ -25,7 +25,7 @@ DOMAIN=/
 ```
 
 `DOMAIN` should be a path prefix (for example `/` or `/marta`), not a full external URL.
-`STATIC_VERSION` is optional; if unset, the app fingerprints `static/css/app.css` and `static/js/app.js` automatically for cache busting on deploy.
+`STATIC_VERSION` is optional; static URLs always include a CSS/JS fingerprint, and when `STATIC_VERSION` is set it is prefixed (for example `2-<hash>`).
 
 3. Start the app:
 
