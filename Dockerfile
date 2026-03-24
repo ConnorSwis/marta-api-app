@@ -1,3 +1,4 @@
+## syntax=docker/dockerfile:1.7
 FROM python:3.12-slim-bullseye
 
 WORKDIR /app
@@ -16,10 +17,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN python -m venv /venv
 ENV PATH="/venv/bin:$PATH"
 
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --upgrade pip setuptools wheel
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir --prefer-binary -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --prefer-binary -r requirements.txt
 
 COPY . .
 
