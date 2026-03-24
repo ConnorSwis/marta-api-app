@@ -98,7 +98,7 @@
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
       max-width: min(calc(100vw - 48px), 960px);
-      max-height: min(max(calc(100vh - 300px), 380px), 760px);
+      max-height: min(max(calc(100dvh - 390px), 220px), 700px);
       background: #ffffff;
     }
 
@@ -142,14 +142,19 @@
     {% set days = ["weekday", "saturday", "sunday"] %} {% if context.line_key in
     ["red", "gold"] %} {% set direction1 = "northbound" %} {% set direction2 =
     "southbound" %} {% else %} {% set direction1 = "eastbound" %} {% set
-    direction2 = "westbound" %} {% endif %}
+    direction2 = "westbound" %} {% endif %} {% set active_day = context.initial_day
+    if context.initial_day in days else "weekday" %} {% set active_direction =
+    context.initial_direction if context.initial_direction in [direction1,
+    direction2] else direction1 %}
 
     <div class="schedule-header">
       <span>Loaded at {{ context.loaded_at }}</span>
       <button
+        id="schedule-refresh-btn"
         class="refresh-btn"
         type="button"
-        hx-get="{{ request.state.domain }}/htmx/schedule/{{ context.line_key }}?refresh=true"
+        data-refresh-base="{{ request.state.domain }}/htmx/schedule/{{ context.line_key }}"
+        hx-get="{{ request.state.domain }}/htmx/schedule/{{ context.line_key }}?refresh=true&day={{ active_day }}&direction={{ active_direction }}"
         hx-target="#schedule-content"
         hx-swap="innerHTML"
         hx-indicator="#global-indicator"
@@ -165,7 +170,7 @@
     <div class="tab-menu">
       {% for day in days %}
       <button
-        class="{% if loop.first %}active{% endif %}"
+        class="{% if day == active_day %}active{% endif %}"
         data-tab-target="#tab-{{ day }}"
       >
         {{ day|capitalize }}
@@ -176,23 +181,23 @@
     {% for day in days %}
     <div
       id="tab-{{ day }}"
-      class="tab-content {% if loop.first %}active{% endif %}"
+      class="tab-content {% if day == active_day %}active{% endif %}"
     >
       <div class="day-container">
         <div class="direction-container">
           <div class="direction-menu">
             <button
-              class="active"
+              class="{% if active_direction == direction1 %}active{% endif %}"
               data-tab-target="#{{ direction1 }}-{{ day }}"
             >
               {{ direction1|capitalize }}
             </button>
-            <button data-tab-target="#{{ direction2 }}-{{ day }}">
+            <button class="{% if active_direction == direction2 %}active{% endif %}" data-tab-target="#{{ direction2 }}-{{ day }}">
               {{ direction2|capitalize }}
             </button>
           </div>
 
-          <div id="{{ direction1 }}-{{ day }}" class="direction-content active">
+          <div id="{{ direction1 }}-{{ day }}" class="direction-content {% if active_direction == direction1 %}active{% endif %}">
             <div class="schedule-container">
               {% set schedule = context.schedule[day][direction1] %}
               <table class="schedule-table">
@@ -221,7 +226,7 @@
             </div>
           </div>
 
-          <div id="{{ direction2 }}-{{ day }}" class="direction-content">
+          <div id="{{ direction2 }}-{{ day }}" class="direction-content {% if active_direction == direction2 %}active{% endif %}">
             <div class="schedule-container">
               {% set schedule = context.schedule[day][direction2] %}
               <table class="schedule-table">
@@ -262,7 +267,9 @@
       const snippetContainer = document.querySelector("{{ selector }}");
       if (!snippetContainer) return;
 
-      let currentDirection = "{{ direction1 }}";
+      let currentDirection = "{{ active_direction }}";
+      let currentDay = "{{ active_day }}";
+      const refreshButton = snippetContainer.querySelector("#schedule-refresh-btn");
       const tabButtons = snippetContainer.querySelectorAll(".tab-menu button");
       const tabContents = snippetContainer.querySelectorAll(".tab-content");
 
@@ -276,8 +283,10 @@
             button.dataset.tabTarget,
           );
           if (target) {
+            currentDay = target.id.replace("tab-", "");
             target.classList.add("active");
             setDirection(target, currentDirection);
+            updateUrls();
           }
         });
       });
@@ -304,9 +313,49 @@
               )
                 ? "{{ direction1 }}"
                 : "{{ direction2 }}";
+              const dayPanel = container.closest(".tab-content");
+              if (dayPanel && dayPanel.id) {
+                currentDay = dayPanel.id.replace("tab-", "");
+              }
+              updateUrls();
             });
           });
         });
+
+      function updateUrls() {
+        updateRefreshUrl();
+        updateBrowserUrl();
+      }
+
+      function updateRefreshUrl() {
+        if (!refreshButton) return;
+        const base = refreshButton.dataset.refreshBase;
+        if (!base) return;
+        refreshButton.setAttribute(
+          "hx-get",
+          `${base}?refresh=true&day=${encodeURIComponent(currentDay)}&direction=${encodeURIComponent(currentDirection)}`,
+        );
+      }
+
+      function updateBrowserUrl() {
+        const url = new URL(window.location.href);
+        url.pathname = "/schedules";
+        url.searchParams.set("line", "{{ context.line_key }}");
+        url.searchParams.set("day", currentDay);
+        url.searchParams.set("direction", currentDirection);
+        window.history.replaceState(
+          {
+            view: "schedules",
+            line: "{{ context.line_key }}",
+            day: currentDay,
+            direction: currentDirection,
+          },
+          "",
+          `${url.pathname}?${url.searchParams.toString()}`,
+        );
+      }
+
+      updateUrls();
 
       function setDirection(tabContent, direction) {
         const directionContainer = tabContent.querySelector(

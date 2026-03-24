@@ -12,8 +12,12 @@ from itsmarta_api.marta.realtime import MARTA
 from itsmarta_api.marta.realtime.exceptions import APIKeyError, InvalidDirectionError
 from itsmarta_api.marta.realtime.models import BusPosition, Train
 from itsmarta_api.services.rail_schedules import Schedules
+from itsmarta_api.services.reliability import ReliabilityTracker
 
 LINE_KEYS = ("red", "gold", "blue", "green")
+SCHEDULE_DAY_KEYS = ("weekday", "saturday", "sunday")
+NS_DIRECTIONS = ("northbound", "southbound")
+EW_DIRECTIONS = ("eastbound", "westbound")
 _DIRECTION_LOOKUP = {
     "n": "n",
     "north": "n",
@@ -28,9 +32,30 @@ _DIRECTION_LOOKUP = {
     "west": "w",
     "westbound": "w",
 }
+_SCHEDULE_DIRECTION_LOOKUP = {
+    "n": "northbound",
+    "north": "northbound",
+    "northbound": "northbound",
+    "s": "southbound",
+    "south": "southbound",
+    "southbound": "southbound",
+    "e": "eastbound",
+    "east": "eastbound",
+    "eastbound": "eastbound",
+    "w": "westbound",
+    "west": "westbound",
+    "westbound": "westbound",
+}
 
 
-def init_routes(app, *, schedules: Schedules, marta: MARTA, templates: Jinja2Templates):
+def init_routes(
+    app,
+    *,
+    schedules: Schedules,
+    marta: MARTA,
+    templates: Jinja2Templates,
+    reliability: ReliabilityTracker,
+):
     htmx_router = APIRouter(prefix="/htmx")
     schedule_lookup = {
         "red": schedules.red,
@@ -44,15 +69,24 @@ def init_routes(app, *, schedules: Schedules, marta: MARTA, templates: Jinja2Tem
         request: Request,
         line: str,
         refresh: bool = Query(default=False),
+        day: str | None = Query(default=None),
+        direction: str | None = Query(default=None),
     ):
         selected_line = schedule_lookup.get(line.lower())
         if not selected_line:
             raise HTTPException(status_code=404, detail="Line not found")
+        selected_line_key = selected_line.line.value.lower()
+        selected_day = _normalize_schedule_day(day) or "weekday"
+        selected_direction = _normalize_schedule_direction(
+            direction,
+            selected_line_key,
+        ) or _default_schedule_direction(selected_line_key)
 
         error_message: str | None = None
         try:
             if refresh:
                 await selected_line.refresh()
+                reliability.refresh_expected_cache()
             elif selected_line.is_empty():
                 await selected_line.init()
         except Exception:
@@ -62,13 +96,15 @@ def init_routes(app, *, schedules: Schedules, marta: MARTA, templates: Jinja2Tem
             )
 
         return templates.TemplateResponse(
-            "schedules/components/schedule.html",
+            "schedules/components/schedule.html.j2",
             {
                 "request": request,
                 "context": {
                     "schedule": selected_line.to_dict(),
                     "line": selected_line.line.value,
                     "line_key": selected_line.line.value.lower(),
+                    "initial_day": selected_day,
+                    "initial_direction": selected_direction,
                     "loaded_at": datetime.now().strftime("%I:%M:%S %p"),
                     "error": error_message,
                 },
@@ -86,6 +122,7 @@ def init_routes(app, *, schedules: Schedules, marta: MARTA, templates: Jinja2Tem
     ):
         line_filter = _normalize_line(line)
         direction_filter = _normalize_direction(direction)
+        should_record_snapshot = not any([line_filter, direction_filter, station, q])
 
         error_message: str | None = None
         try:
@@ -100,6 +137,12 @@ def init_routes(app, *, schedules: Schedules, marta: MARTA, templates: Jinja2Tem
         except Exception:
             trains = []
             error_message = "Could not load train arrivals. Please try again in a moment."
+
+        if should_record_snapshot and trains:
+            try:
+                await run_in_threadpool(reliability.record_snapshot, trains)
+            except Exception:
+                pass
 
         normalized_station = station.strip().lower() if station else None
         normalized_query = q.strip().lower() if q else None
@@ -140,7 +183,7 @@ def init_routes(app, *, schedules: Schedules, marta: MARTA, templates: Jinja2Tem
         poll_url = request.url.path if not query_string else f"{request.url.path}?{query_string}"
 
         return templates.TemplateResponse(
-            "arrivals/components/stations.html",
+            "arrivals/components/stations.html.j2",
             {
                 "request": request,
                 "context": {
@@ -160,12 +203,87 @@ def init_routes(app, *, schedules: Schedules, marta: MARTA, templates: Jinja2Tem
     @htmx_router.get("/arrivals", response_class=HTMLResponse)
     @htmx_router.get("/arrivals/", response_class=HTMLResponse)
     async def arrivals(request: Request):
-        return templates.TemplateResponse("arrivals/index.html", {"request": request})
+        return templates.TemplateResponse("arrivals/index.html.j2", {"request": request})
 
     @htmx_router.get("/buses", response_class=HTMLResponse)
     @htmx_router.get("/buses/", response_class=HTMLResponse)
     async def buses_page(request: Request):
-        return templates.TemplateResponse("buses/index.html", {"request": request})
+        return templates.TemplateResponse("buses/index.html.j2", {"request": request})
+
+    @htmx_router.get("/reliability", response_class=HTMLResponse)
+    @htmx_router.get("/reliability/", response_class=HTMLResponse)
+    async def reliability_page(request: Request):
+        return templates.TemplateResponse("reliability/index.html.j2", {"request": request})
+
+    @htmx_router.get("/reliability/component/scoreboard", response_class=HTMLResponse)
+    async def reliability_scoreboard(
+        request: Request,
+        day_type: str | None = Query(default=None),
+        hour: str | None = Query(default=None),
+        lookback_days: int = Query(default=14, ge=3, le=90),
+        line: str | None = Query(default=None),
+        sort_by: str | None = Query(default=None),
+        sort_dir: str | None = Query(default=None),
+    ):
+        line_filter = _normalize_line(line) if line else None
+        day_filter = _normalize_day_type(day_type) if day_type else None
+        hour_filter = _normalize_hour(hour) if hour is not None else None
+        sort_by_filter = _normalize_sort_by(sort_by) if sort_by else None
+        sort_dir_filter = _normalize_sort_dir(sort_dir) if sort_dir else "asc"
+        display_sort_by = sort_by_filter or "reliability_score"
+        display_sort_dir = sort_dir_filter if sort_by_filter else "asc"
+
+        error_message: str | None = None
+        rows = []
+        try:
+            rows = await run_in_threadpool(
+                reliability.get_scoreboard,
+                day_type=day_filter,
+                hour=hour_filter,
+                lookback_days=lookback_days,
+                line=line_filter,
+            )
+            if sort_by_filter:
+                rows = _sort_reliability_rows(
+                    rows=rows,
+                    sort_by=sort_by_filter,
+                    sort_dir=sort_dir_filter,
+                )
+        except Exception:
+            error_message = (
+                "Could not load reliability metrics right now. "
+                "Please try again in a moment."
+            )
+
+        query_params: dict[str, Any] = {
+            "line": line_filter,
+            "day_type": day_filter,
+            "hour": hour_filter,
+            "lookback_days": lookback_days,
+            "sort_by": sort_by_filter,
+            "sort_dir": sort_dir_filter if sort_by_filter else None,
+        }
+        query_string = urlencode({k: v for k, v in query_params.items() if v is not None and v != ""})
+        poll_url = request.url.path if not query_string else f"{request.url.path}?{query_string}"
+
+        return templates.TemplateResponse(
+            "reliability/components/scoreboard.html.j2",
+            {
+                "request": request,
+                "context": {
+                    "rows": rows,
+                    "error": error_message,
+                    "line": line_filter,
+                    "day_type": day_filter,
+                    "hour": hour_filter,
+                    "lookback_days": lookback_days,
+                    "sort_by": display_sort_by,
+                    "sort_dir": display_sort_dir,
+                    "poll_url": poll_url,
+                    "loaded_at": datetime.now().strftime("%I:%M:%S %p"),
+                },
+            },
+        )
 
     @htmx_router.get("/buses/positions")
     async def bus_positions(
@@ -206,8 +324,29 @@ def init_routes(app, *, schedules: Schedules, marta: MARTA, templates: Jinja2Tem
 
     @htmx_router.get("/schedules", response_class=HTMLResponse)
     @htmx_router.get("/schedules/", response_class=HTMLResponse)
-    async def schedules_page(request: Request):
-        return templates.TemplateResponse("schedules/index.html", {"request": request})
+    async def schedules_page(
+        request: Request,
+        line: str | None = Query(default=None),
+        day: str | None = Query(default=None),
+        direction: str | None = Query(default=None),
+    ):
+        selected_line = _normalize_line(line) or "red"
+        selected_day = _normalize_schedule_day(day) or "weekday"
+        selected_direction = _normalize_schedule_direction(
+            direction,
+            selected_line,
+        ) or _default_schedule_direction(selected_line)
+        return templates.TemplateResponse(
+            "schedules/index.html.j2",
+            {
+                "request": request,
+                "context": {
+                    "line": selected_line,
+                    "day": selected_day,
+                    "direction": selected_direction,
+                },
+            },
+        )
 
     app.include_router(htmx_router)
 
@@ -249,6 +388,106 @@ def _normalize_bus_route(route: str | None) -> str | None:
         raise HTTPException(status_code=422, detail="Invalid bus route filter")
 
     return normalized
+
+
+def _normalize_day_type(day_type: str) -> str:
+    normalized = day_type.strip().lower()
+    if normalized not in {"weekday", "saturday", "sunday"}:
+        raise HTTPException(status_code=422, detail="Invalid day type filter")
+    return normalized
+
+
+def _normalize_schedule_day(day: str | None) -> str | None:
+    if not day:
+        return None
+
+    normalized = day.strip().lower()
+    if normalized in SCHEDULE_DAY_KEYS:
+        return normalized
+    return None
+
+
+def _normalize_schedule_direction(direction: str | None, line: str) -> str | None:
+    if not direction:
+        return None
+
+    normalized = direction.strip().lower()
+    canonical = _SCHEDULE_DIRECTION_LOOKUP.get(normalized)
+    if not canonical:
+        return None
+
+    if canonical in _directions_for_line(line):
+        return canonical
+    return None
+
+
+def _directions_for_line(line: str) -> tuple[str, str]:
+    return NS_DIRECTIONS if line in {"red", "gold"} else EW_DIRECTIONS
+
+
+def _default_schedule_direction(line: str) -> str:
+    return _directions_for_line(line)[0]
+
+
+def _normalize_hour(hour: str) -> int | None:
+    value = hour.strip()
+    if value == "":
+        return None
+
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="Invalid hour filter") from exc
+
+    if parsed < 0 or parsed > 23:
+        raise HTTPException(status_code=422, detail="Invalid hour filter")
+    return parsed
+
+
+def _normalize_sort_by(sort_by: str) -> str:
+    normalized = sort_by.strip().lower()
+    allowed = {
+        "line",
+        "station",
+        "scheduled_in_slot",
+        "samples",
+        "mean_error_minutes",
+        "mae_minutes",
+        "on_time_percent",
+        "realtime_percent",
+        "reliability_score",
+        "band",
+    }
+    if normalized not in allowed:
+        raise HTTPException(status_code=422, detail="Invalid sort field")
+    return normalized
+
+
+def _normalize_sort_dir(sort_dir: str) -> str:
+    normalized = sort_dir.strip().lower()
+    if normalized not in {"asc", "desc"}:
+        raise HTTPException(status_code=422, detail="Invalid sort direction")
+    return normalized
+
+
+def _sort_reliability_rows(rows: list[Any], sort_by: str, sort_dir: str) -> list[Any]:
+    reverse = sort_dir == "desc"
+
+    def key(item):
+        value = getattr(item, sort_by, None)
+        if value is None:
+            # Put missing values at bottom regardless of direction.
+            return (1, 0)
+        if isinstance(value, str):
+            return (0, value.lower())
+        return (0, value)
+
+    sorted_rows = sorted(rows, key=key, reverse=reverse)
+    if reverse:
+        missing = [row for row in sorted_rows if getattr(row, sort_by, None) is None]
+        present = [row for row in sorted_rows if getattr(row, sort_by, None) is not None]
+        return present + missing
+    return sorted_rows
 
 
 def trains_to_dicts(trains: list[Train]) -> list[dict[str, Any]]:

@@ -1,0 +1,124 @@
+<section
+  id="reliability-scoreboard"
+  class="panel"
+  hx-get="{{ request.state.domain }}{{ context.poll_url }}"
+  hx-trigger="every 30s"
+  hx-swap="outerHTML"
+  hx-indicator="#global-indicator"
+>
+  {% set current_sort_by = context.sort_by or "" %}
+  {% set current_sort_dir = context.sort_dir or "asc" %}
+
+  <div class="arrivals-summary">
+    <p class="arrivals-meta">{{ context.rows | length }} stations scored at {{ context.loaded_at }}</p>
+    <p class="arrivals-meta">
+      {% if context.line %}Line: {{ context.line | upper }}{% else %}All lines{% endif %}
+      | Lookback: {{ context.lookback_days }} days
+    </p>
+  </div>
+
+  {% if context.error %}
+  <div class="error-banner">{{ context.error }}</div>
+  {% endif %}
+
+  <details class="scoreboard-help">
+    <summary class="scoreboard-help-title">How to read this table</summary>
+    <p class="scoreboard-help-line">
+      <strong>Mean Err</strong>: signed average arrival error (positive means trains tend to be late, negative means early).
+    </p>
+    <p class="scoreboard-help-line">
+      <strong>MAE</strong>: average absolute error in minutes; lower is better.
+    </p>
+    <p class="scoreboard-help-line">
+      <strong>On-time (&le;3m)</strong>: percent of samples within 3 minutes of schedule.
+    </p>
+    <p class="scoreboard-help-line">
+      <strong>Score</strong>: blended reliability from MAE and on-time performance.
+    </p>
+  </details>
+
+  {% if not context.rows %}
+  <div class="empty-state">Not enough observed data yet. Keep arrivals open for a while, then check back.</div>
+  {% else %}
+  <div class="scoreboard-table-wrap">
+    <table class="scoreboard-table">
+      <thead>
+        <tr>
+          <th>
+            <button class="th-sort-btn" hx-get="{{ request.state.domain }}/htmx/reliability/component/scoreboard?sort_by=line&sort_dir={% if current_sort_by == 'line' and current_sort_dir == 'asc' %}desc{% else %}asc{% endif %}" hx-target="#reliability-scoreboard" hx-swap="outerHTML" hx-include="#reliability-filters">
+              Line{% if current_sort_by == "line" %} {% if current_sort_dir == "asc" %}▲{% else %}▼{% endif %}{% endif %}
+            </button>
+          </th>
+          <th>
+            <button class="th-sort-btn" hx-get="{{ request.state.domain }}/htmx/reliability/component/scoreboard?sort_by=station&sort_dir={% if current_sort_by == 'station' and current_sort_dir == 'asc' %}desc{% else %}asc{% endif %}" hx-target="#reliability-scoreboard" hx-swap="outerHTML" hx-include="#reliability-filters">
+              Station{% if current_sort_by == "station" %} {% if current_sort_dir == "asc" %}▲{% else %}▼{% endif %}{% endif %}
+            </button>
+          </th>
+          <th>
+            <button class="th-sort-btn" hx-get="{{ request.state.domain }}/htmx/reliability/component/scoreboard?sort_by=scheduled_in_slot&sort_dir={% if current_sort_by == 'scheduled_in_slot' and current_sort_dir == 'asc' %}desc{% else %}asc{% endif %}" hx-target="#reliability-scoreboard" hx-swap="outerHTML" hx-include="#reliability-filters">
+              Scheduled/hr{% if current_sort_by == "scheduled_in_slot" %} {% if current_sort_dir == "asc" %}▲{% else %}▼{% endif %}{% endif %}
+            </button>
+          </th>
+          <th>
+            <button class="th-sort-btn" hx-get="{{ request.state.domain }}/htmx/reliability/component/scoreboard?sort_by=samples&sort_dir={% if current_sort_by == 'samples' and current_sort_dir == 'asc' %}desc{% else %}asc{% endif %}" hx-target="#reliability-scoreboard" hx-swap="outerHTML" hx-include="#reliability-filters">
+              Samples{% if current_sort_by == "samples" %} {% if current_sort_dir == "asc" %}▲{% else %}▼{% endif %}{% endif %}
+            </button>
+          </th>
+          <th>
+            <button class="th-sort-btn" hx-get="{{ request.state.domain }}/htmx/reliability/component/scoreboard?sort_by=mean_error_minutes&sort_dir={% if current_sort_by == 'mean_error_minutes' and current_sort_dir == 'asc' %}desc{% else %}asc{% endif %}" hx-target="#reliability-scoreboard" hx-swap="outerHTML" hx-include="#reliability-filters">
+              Mean Err{% if current_sort_by == "mean_error_minutes" %} {% if current_sort_dir == "asc" %}▲{% else %}▼{% endif %}{% endif %}
+            </button>
+          </th>
+          <th>
+            <button class="th-sort-btn" hx-get="{{ request.state.domain }}/htmx/reliability/component/scoreboard?sort_by=mae_minutes&sort_dir={% if current_sort_by == 'mae_minutes' and current_sort_dir == 'asc' %}desc{% else %}asc{% endif %}" hx-target="#reliability-scoreboard" hx-swap="outerHTML" hx-include="#reliability-filters">
+              MAE{% if current_sort_by == "mae_minutes" %} {% if current_sort_dir == "asc" %}▲{% else %}▼{% endif %}{% endif %}
+            </button>
+          </th>
+          <th>
+            <button class="th-sort-btn" hx-get="{{ request.state.domain }}/htmx/reliability/component/scoreboard?sort_by=on_time_percent&sort_dir={% if current_sort_by == 'on_time_percent' and current_sort_dir == 'asc' %}desc{% else %}asc{% endif %}" hx-target="#reliability-scoreboard" hx-swap="outerHTML" hx-include="#reliability-filters">
+              On-time (&le;3m){% if current_sort_by == "on_time_percent" %} {% if current_sort_dir == "asc" %}▲{% else %}▼{% endif %}{% endif %}
+            </button>
+          </th>
+          <th>
+            <button class="th-sort-btn" hx-get="{{ request.state.domain }}/htmx/reliability/component/scoreboard?sort_by=realtime_percent&sort_dir={% if current_sort_by == 'realtime_percent' and current_sort_dir == 'asc' %}desc{% else %}asc{% endif %}" hx-target="#reliability-scoreboard" hx-swap="outerHTML" hx-include="#reliability-filters">
+              Realtime %{% if current_sort_by == "realtime_percent" %} {% if current_sort_dir == "asc" %}▲{% else %}▼{% endif %}{% endif %}
+            </button>
+          </th>
+          <th>
+            <button class="th-sort-btn" hx-get="{{ request.state.domain }}/htmx/reliability/component/scoreboard?sort_by=reliability_score&sort_dir={% if current_sort_by == 'reliability_score' and current_sort_dir == 'asc' %}desc{% else %}asc{% endif %}" hx-target="#reliability-scoreboard" hx-swap="outerHTML" hx-include="#reliability-filters">
+              Score{% if current_sort_by == "reliability_score" %} {% if current_sort_dir == "asc" %}▲{% else %}▼{% endif %}{% endif %}
+            </button>
+          </th>
+          <th>
+            <button class="th-sort-btn" hx-get="{{ request.state.domain }}/htmx/reliability/component/scoreboard?sort_by=band&sort_dir={% if current_sort_by == 'band' and current_sort_dir == 'asc' %}desc{% else %}asc{% endif %}" hx-target="#reliability-scoreboard" hx-swap="outerHTML" hx-include="#reliability-filters">
+              Band{% if current_sort_by == "band" %} {% if current_sort_dir == "asc" %}▲{% else %}▼{% endif %}{% endif %}
+            </button>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in context.rows %}
+        <tr>
+          <td>
+            <span class="line-pill line-{{ row.line }}">{{ row.line[0] | upper }}</span>
+          </td>
+          <td>{{ row.station }}</td>
+          <td>{{ row.scheduled_in_slot }}</td>
+          <td>{{ row.samples }}</td>
+          <td>
+            {% if row.mean_error_minutes is none %}—{% elif row.mean_error_minutes >= 0 %}+{{ row.mean_error_minutes }}m{% else %}{{ row.mean_error_minutes }}m{% endif %}
+          </td>
+          <td>{% if row.mae_minutes is none %}—{% else %}{{ row.mae_minutes }}m{% endif %}</td>
+          <td>{% if row.on_time_percent is none %}—{% else %}{{ row.on_time_percent }}%{% endif %}</td>
+          <td>{% if row.realtime_percent is none %}—{% else %}{{ row.realtime_percent }}%{% endif %}</td>
+          <td>{{ row.reliability_score }}%</td>
+          <td>
+            <span class="score-band score-band-{{ row.band }}">{{ row.band }}</span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</section>

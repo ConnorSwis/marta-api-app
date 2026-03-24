@@ -58,6 +58,17 @@
         >
           Bus Map
         </button>
+        <button
+          class="nav-tab {% if initial_view == 'reliability' %}is-active{% endif %}"
+          data-view-target="reliability"
+          data-view-path="{{ request.state.domain }}/reliability"
+          hx-get="{{ request.state.domain }}/htmx/reliability"
+          hx-target="#body"
+          hx-swap="outerHTML"
+          hx-indicator="#global-indicator"
+        >
+          Reliability
+        </button>
       </nav>
     </header>
 

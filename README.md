@@ -4,6 +4,7 @@ FastAPI + HTMX app for:
 - realtime MARTA rail arrivals
 - published rail schedules (red, gold, blue, green)
 - realtime MARTA bus map (GTFS-realtime vehicle positions)
+- reliability scoreboard (scheduled vs observed arrival-time error by station/hour)
 
 ## Run Locally
 
@@ -14,6 +15,7 @@ FastAPI + HTMX app for:
 MARTA_API_KEY=your_key_here
 MARTA_CACHE_EXPIRE=30
 MARTA_BUS_POSITIONS_URL=https://gtfs-rt.itsmarta.com/TMGTFSRealTimeWebService/Vehicle/VehiclePositions.pb
+RELIABILITY_DB_PATH=marta_reliability.sqlite
 DOMAIN=/
 ```
 
@@ -39,4 +41,5 @@ Then open `http://localhost:8000`.
 - Arrivals auto-refresh every 30 seconds while preserving active filters.
 - Bus map auto-refreshes every 10 seconds and supports route/vehicle filters.
 - Schedule views support explicit refresh from MARTA source pages.
+- Reliability scoreboard auto-refreshes every 30 seconds and supports line/day/hour/lookback filters.
 - If MARTA API/schedule fetch fails, UI returns a readable error state instead of a hard crash.

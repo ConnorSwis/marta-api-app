@@ -1,0 +1,67 @@
+<main id="body" class="view-body" data-view="schedules">
+  {% set selected_line = context.line if context else "red" %}
+  {% set selected_day = context.day if context else "weekday" %}
+  {% set selected_direction = context.direction if context else "northbound" %}
+  {% set schedule_query = "?day=" ~ selected_day ~ "&direction=" ~ selected_direction %}
+
+  <section class="panel">
+    <div class="panel-header">
+      <h2 class="panel-title">Train schedules</h2>
+      <p class="panel-subtitle">Choose a line to load timetable data.</p>
+    </div>
+
+    <div class="schedule-line-row" id="schedule-line-switcher">
+      <button
+        class="schedule-line-btn line-red {% if selected_line == 'red' %}is-active{% endif %}"
+        data-line="red"
+        hx-get="{{ request.state.domain }}/htmx/schedule/red{{ schedule_query }}"
+        hx-target="#schedule-content"
+        hx-swap="innerHTML"
+        {% if selected_line == "red" %}hx-trigger="load"{% endif %}
+        hx-indicator="#global-indicator"
+      >
+        Red
+      </button>
+
+      <button
+        class="schedule-line-btn line-gold {% if selected_line == 'gold' %}is-active{% endif %}"
+        data-line="gold"
+        hx-get="{{ request.state.domain }}/htmx/schedule/gold{{ schedule_query }}"
+        hx-target="#schedule-content"
+        hx-swap="innerHTML"
+        {% if selected_line == "gold" %}hx-trigger="load"{% endif %}
+        hx-indicator="#global-indicator"
+      >
+        Gold
+      </button>
+
+      <button
+        class="schedule-line-btn line-blue {% if selected_line == 'blue' %}is-active{% endif %}"
+        data-line="blue"
+        hx-get="{{ request.state.domain }}/htmx/schedule/blue{{ schedule_query }}"
+        hx-target="#schedule-content"
+        hx-swap="innerHTML"
+        {% if selected_line == "blue" %}hx-trigger="load"{% endif %}
+        hx-indicator="#global-indicator"
+      >
+        Blue
+      </button>
+
+      <button
+        class="schedule-line-btn line-green {% if selected_line == 'green' %}is-active{% endif %}"
+        data-line="green"
+        hx-get="{{ request.state.domain }}/htmx/schedule/green{{ schedule_query }}"
+        hx-target="#schedule-content"
+        hx-swap="innerHTML"
+        {% if selected_line == "green" %}hx-trigger="load"{% endif %}
+        hx-indicator="#global-indicator"
+      >
+        Green
+      </button>
+    </div>
+  </section>
+
+  <section id="schedule-content" class="panel schedule-content">
+    <p class="placeholder">Loading schedule</p>
+  </section>
+</main>

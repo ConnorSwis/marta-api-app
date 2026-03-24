@@ -19,10 +19,11 @@
 html,
 body {
   margin: 0;
-  min-height: 100%;
+  height: 100%;
   font-family: "IBM Plex Sans", "Avenir Next", sans-serif;
   color: var(--ink-900);
   background: var(--paper);
+  overflow: hidden;
 }
 
 button,
@@ -34,7 +35,9 @@ input {
 .app-shell {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden;
 }
 
 .topbar {
@@ -106,10 +109,53 @@ input {
 }
 
 .view-body {
+  flex: 1 1 auto;
+  min-height: 0;
   width: min(1240px, 100% - 32px);
-  margin: 16px auto 24px;
+  margin: 12px auto 14px;
   display: grid;
   gap: 12px;
+  overflow: auto;
+}
+
+.view-body[data-view="arrivals"],
+.view-body[data-view="schedules"],
+.view-body[data-view="reliability"],
+.view-body[data-view="buses"] {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.view-body[data-view="arrivals"] #stations {
+  min-height: 0;
+  overflow: auto;
+}
+
+.view-body[data-view="reliability"] #reliability-scoreboard {
+  min-height: 0;
+}
+
+#stations {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.view-body[data-view="schedules"] #schedule-content {
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.view-body[data-view="schedules"] #schedule-content > * {
+  flex: 1;
+  min-height: 0;
+}
+
+#reliability-scoreboard {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .panel {
@@ -420,6 +466,11 @@ input {
   overflow: hidden;
 }
 
+.view-body[data-view="buses"] .buses-map-panel {
+  --bus-map-height: 100%;
+  min-height: 0;
+}
+
 .buses-map-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
@@ -432,7 +483,7 @@ input {
 .bus-map {
   width: 100%;
   height: var(--bus-map-height);
-  min-height: 420px;
+  min-height: 260px;
   background: #e7e5e4;
 }
 
@@ -643,6 +694,121 @@ input {
   background: #fafaf9;
 }
 
+.scoreboard-table-wrap {
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #ffffff;
+  flex: 1;
+  min-height: 0;
+}
+
+.scoreboard-help {
+  border: 1px solid #e7e5e4;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.scoreboard-help-title {
+  margin: 0;
+  font-size: 0.83rem;
+  font-weight: 700;
+  color: var(--ink-900);
+  cursor: pointer;
+  user-select: none;
+}
+
+.scoreboard-help-line {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--ink-700);
+}
+
+.scoreboard-help[open] .scoreboard-help-title {
+  margin-bottom: 6px;
+}
+
+.scoreboard-help-line + .scoreboard-help-line {
+  margin-top: 4px;
+}
+
+.scoreboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 760px;
+}
+
+.scoreboard-table th,
+.scoreboard-table td {
+  border: 1px solid #ece8e2;
+  padding: 8px 10px;
+  font-size: 0.84rem;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.scoreboard-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #f5f5f4;
+  font-weight: 600;
+}
+
+.th-sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  padding: 0;
+  cursor: pointer;
+}
+
+.th-sort-btn:hover {
+  text-decoration: underline;
+}
+
+.scoreboard-table tbody tr:nth-child(odd) {
+  background: #fafaf9;
+}
+
+.score-band {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-weight: 600;
+}
+
+.score-band-stable {
+  background: rgba(21, 128, 61, 0.12);
+  color: #166534;
+}
+
+.score-band-watch {
+  background: rgba(161, 98, 7, 0.14);
+  color: #854d0e;
+}
+
+.score-band-at-risk {
+  background: rgba(220, 38, 38, 0.12);
+  color: #991b1b;
+}
+
+.score-band-no-data {
+  background: #e7e5e4;
+  color: #57534e;
+}
+
 .placeholder {
   padding: 22px;
   text-align: center;
@@ -656,6 +822,7 @@ input {
 
   .buses-map-layout {
     grid-template-columns: 1fr;
+    height: auto;
   }
 
   .buses-legend {
@@ -727,7 +894,8 @@ input {
   }
 
   .bus-map {
-    min-height: 320px;
+    height: min(48vh, 420px);
+    min-height: 280px;
   }
 
   .train-row {

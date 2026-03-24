@@ -6,6 +6,8 @@
   const BUS_MAP_POLL_MS = 10000;
   const ROUTE_COLOR_STORAGE_KEY = "marta-bus-route-colors-v1";
   const DEFAULT_VIEW = "arrivals";
+  const RELIABILITY_SCOREBOARD_ENDPOINT =
+    "/htmx/reliability/component/scoreboard";
 
   const busMapState = {
     map: null,
@@ -16,6 +18,11 @@
     endpoint: "",
     fitBoundsDone: false,
     loading: false,
+  };
+  const reliabilityScoreboardScrollState = {
+    left: 0,
+    top: 0,
+    hasValue: false,
   };
 
   function normalizePathname(pathname) {
@@ -34,6 +41,9 @@
     if (normalized === "/buses") {
       return "buses";
     }
+    if (normalized === "/reliability") {
+      return "reliability";
+    }
     return DEFAULT_VIEW;
   }
 
@@ -43,6 +53,9 @@
     }
     if (view === "buses") {
       return "/buses";
+    }
+    if (view === "reliability") {
+      return "/reliability";
     }
     return "/arrivals";
   }
@@ -840,6 +853,51 @@
     initBusMap();
   }
 
+  function isReliabilityScoreboardRequest(event) {
+    const requestPath =
+      (event &&
+        event.detail &&
+        event.detail.pathInfo &&
+        event.detail.pathInfo.requestPath) ||
+      "";
+    if (requestPath.includes(RELIABILITY_SCOREBOARD_ENDPOINT)) {
+      return true;
+    }
+
+    const target = event && event.detail ? event.detail.target : null;
+    return !!(target && target.id === "reliability-scoreboard");
+  }
+
+  function captureReliabilityScoreboardScroll() {
+    const tableWrap = document.querySelector(
+      "#reliability-scoreboard .scoreboard-table-wrap",
+    );
+    if (!tableWrap) {
+      reliabilityScoreboardScrollState.hasValue = false;
+      return;
+    }
+
+    reliabilityScoreboardScrollState.left = tableWrap.scrollLeft;
+    reliabilityScoreboardScrollState.top = tableWrap.scrollTop;
+    reliabilityScoreboardScrollState.hasValue = true;
+  }
+
+  function restoreReliabilityScoreboardScroll() {
+    if (!reliabilityScoreboardScrollState.hasValue) {
+      return;
+    }
+
+    const tableWrap = document.querySelector(
+      "#reliability-scoreboard .scoreboard-table-wrap",
+    );
+    if (!tableWrap) {
+      return;
+    }
+
+    tableWrap.scrollLeft = reliabilityScoreboardScrollState.left;
+    tableWrap.scrollTop = reliabilityScoreboardScrollState.top;
+  }
+
   document.addEventListener("DOMContentLoaded", () => {
     initialize(document);
     const requestedView = getViewFromPath(window.location.pathname);
@@ -847,7 +905,16 @@
   });
 
   document.body.addEventListener("htmx:afterSwap", (event) => {
+    if (isReliabilityScoreboardRequest(event)) {
+      restoreReliabilityScoreboardScroll();
+    }
     initialize(event.target);
+  });
+
+  document.body.addEventListener("htmx:beforeRequest", (event) => {
+    if (isReliabilityScoreboardRequest(event)) {
+      captureReliabilityScoreboardScroll();
+    }
   });
 
   window.addEventListener("beforeunload", () => {

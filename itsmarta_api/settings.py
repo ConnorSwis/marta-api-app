@@ -29,6 +29,10 @@ class Config:
             'MARTA_BUS_POSITIONS_URL',
             'https://gtfs-rt.itsmarta.com/TMGTFSRealTimeWebService/Vehicle/VehiclePositions.pb'
         )
+        self.reliability_db_path = getenv(
+            'RELIABILITY_DB_PATH',
+            'marta_reliability.sqlite'
+        )
         self.domain = getenv('DOMAIN', '/')
 
 

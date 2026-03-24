@@ -1,0 +1,72 @@
+<main id="body" class="view-body" data-view="reliability">
+  <section class="panel">
+    <div class="panel-header">
+      <h2 class="panel-title">Reliability scoreboard</h2>
+      <p class="panel-subtitle">Scored by arrival-time error between observed and scheduled arrivals.</p>
+    </div>
+
+    <form
+      id="reliability-filters"
+      class="filters-grid"
+      hx-get="{{ request.state.domain }}/htmx/reliability/component/scoreboard"
+      hx-target="#reliability-scoreboard"
+      hx-swap="outerHTML"
+      hx-trigger="change"
+      hx-indicator="#global-indicator"
+    >
+      <div>
+        <label class="field-label" for="reliability-line">Line</label>
+        <select class="select-input" id="reliability-line" name="line">
+          <option value="">All lines</option>
+          <option value="red">Red</option>
+          <option value="gold">Gold</option>
+          <option value="blue">Blue</option>
+          <option value="green">Green</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="field-label" for="reliability-day">Day Type</label>
+        <select class="select-input" id="reliability-day" name="day_type">
+          <option value="">Current day type</option>
+          <option value="weekday">Weekday</option>
+          <option value="saturday">Saturday</option>
+          <option value="sunday">Sunday</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="field-label" for="reliability-hour">Hour</label>
+        <select class="select-input" id="reliability-hour" name="hour">
+          <option value="">Current hour</option>
+          {% for hour in range(24) %}
+          <option value="{{ hour }}">{{ "%02d:00"|format(hour) }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="field-label" for="reliability-lookback">Lookback days</label>
+        <select class="select-input" id="reliability-lookback" name="lookback_days">
+          <option value="7">7</option>
+          <option value="14" selected>14</option>
+          <option value="21">21</option>
+          <option value="30">30</option>
+          <option value="60">60</option>
+        </select>
+      </div>
+    </form>
+  </section>
+
+  <section
+    id="reliability-scoreboard"
+    class="panel"
+    hx-get="{{ request.state.domain }}/htmx/reliability/component/scoreboard"
+    hx-include="#reliability-filters"
+    hx-trigger="load"
+    hx-swap="outerHTML"
+    hx-indicator="#global-indicator"
+  >
+    <p class="placeholder">Loading reliability scoreboard</p>
+  </section>
+</main>
