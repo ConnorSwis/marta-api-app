@@ -11,6 +11,9 @@ from fastapi.templating import Jinja2Templates
 from itsmarta_api.marta.realtime import MARTA
 from itsmarta_api.settings import config
 from itsmarta_api.services.rail_schedules import Schedules
+from itsmarta_api.services.bus_incidents import BusIncidentTracker
+from itsmarta_api.services.bus_positions_poller import BusPositionsPoller
+from itsmarta_api.services.bus_snapshots import BusSnapshotStore
 from itsmarta_api.services.reliability import ReliabilityTracker
 from itsmarta_api.routes.htmx import init_routes
 from itsmarta_api.middleware.request_context import ContextMiddleware
@@ -21,6 +24,22 @@ marta = MARTA(api_key=config.marta_api_key)
 reliability = ReliabilityTracker(
     schedules=schedules,
     db_path=config.reliability_db_path,
+)
+bus_incidents = BusIncidentTracker(
+    db_path=config.reliability_db_path,
+    speed_threshold_mph=config.bus_speed_threshold_mph,
+)
+bus_snapshots = BusSnapshotStore(
+    db_path=config.reliability_db_path,
+    min_interval_seconds=config.bus_snapshot_min_interval_seconds,
+    retention_hours=config.bus_snapshot_retention_hours,
+    compression_level=config.bus_snapshot_compression_level,
+)
+bus_positions_poller = BusPositionsPoller(
+    marta=marta,
+    bus_incidents=bus_incidents,
+    bus_snapshots=bus_snapshots,
+    interval_seconds=config.bus_positions_poll_seconds,
 )
 logger = logging.getLogger(__name__)
 
@@ -35,7 +54,25 @@ async def lifespan(app: FastAPI):
         await reliability.init()
     except Exception as e:
         logger.exception("Failed to initialize reliability tracker during startup: %s", e)
-    yield
+    try:
+        await bus_incidents.init()
+    except Exception as e:
+        logger.exception("Failed to initialize bus incident tracker during startup: %s", e)
+    try:
+        await bus_snapshots.init()
+    except Exception as e:
+        logger.exception("Failed to initialize bus snapshot store during startup: %s", e)
+    try:
+        await bus_positions_poller.start()
+    except Exception as e:
+        logger.exception("Failed to start bus positions poller during startup: %s", e)
+    try:
+        yield
+    finally:
+        try:
+            await bus_positions_poller.stop()
+        except Exception as e:
+            logger.exception("Failed to stop bus positions poller during shutdown: %s", e)
 
 app = FastAPI(title="MARTA Tracker", lifespan=lifespan)
 templates = Jinja2Templates(directory="itsmarta_api/templates")
@@ -47,6 +84,9 @@ init_routes(
     templates=templates,
     marta=marta,
     reliability=reliability,
+    bus_incidents=bus_incidents,
+    bus_snapshots=bus_snapshots,
+    bus_positions_poller=bus_positions_poller,
 )
 
 

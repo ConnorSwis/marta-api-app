@@ -16,6 +16,10 @@ MARTA_API_KEY=your_key_here
 MARTA_CACHE_EXPIRE=30
 MARTA_BUS_POSITIONS_URL=https://gtfs-rt.itsmarta.com/TMGTFSRealTimeWebService/Vehicle/VehiclePositions.pb
 RELIABILITY_DB_PATH=marta_reliability.sqlite
+BUS_SNAPSHOT_MIN_INTERVAL_SECONDS=8
+BUS_SNAPSHOT_RETENTION_HOURS=336
+BUS_SNAPSHOT_COMPRESSION_LEVEL=6
+BUS_POSITIONS_POLL_SECONDS=10
 DOMAIN=/
 ```
 
@@ -40,6 +44,17 @@ Then open `http://localhost:8000`.
 - Arrivals and schedule views are loaded with HTMX fragments.
 - Arrivals auto-refresh every 30 seconds while preserving active filters.
 - Bus map auto-refreshes every 10 seconds and supports route/vehicle filters.
+- Server runs an always-on bus poller and serves `/htmx/buses/positions` from cached poll results.
+- Unfiltered bus polls are stored as compact binary snapshots for low-bandwidth historical replay.
 - Schedule views support explicit refresh from MARTA source pages.
 - Reliability scoreboard auto-refreshes every 30 seconds and supports line/day/hour/lookback filters.
 - If MARTA API/schedule fetch fails, UI returns a readable error state instead of a hard crash.
+
+## Compact Bus Snapshot API
+
+- `GET /htmx/buses/snapshots` lists historical compact snapshots and compression metrics.
+- `GET /htmx/buses/snapshots/health` returns snapshot DB integrity/compression summary.
+- `GET /htmx/buses/snapshots/timeline` returns decoded snapshots for timeline playback.
+- `GET /htmx/buses/snapshots/latest/compact` returns newest compact binary snapshot.
+- `GET /htmx/buses/snapshots/{snapshot_id}/compact` returns a specific compact snapshot.
+- `GET /htmx/buses/snapshots/{snapshot_id}/decoded` returns decoded JSON for debugging/integration.

@@ -33,6 +33,21 @@ class Config:
             'RELIABILITY_DB_PATH',
             'marta_reliability.sqlite'
         )
+        self.bus_speed_threshold_mph = float(
+            getenv('BUS_SPEED_THRESHOLD_MPH', '65')
+        )
+        self.bus_snapshot_min_interval_seconds = int(
+            getenv('BUS_SNAPSHOT_MIN_INTERVAL_SECONDS', '8')
+        )
+        self.bus_snapshot_retention_hours = int(
+            getenv('BUS_SNAPSHOT_RETENTION_HOURS', str(24 * 14))
+        )
+        self.bus_snapshot_compression_level = int(
+            getenv('BUS_SNAPSHOT_COMPRESSION_LEVEL', '6')
+        )
+        self.bus_positions_poll_seconds = int(
+            getenv('BUS_POSITIONS_POLL_SECONDS', '10')
+        )
         self.domain = getenv('DOMAIN', '/')
         self.static_version = getenv('STATIC_VERSION', '1')
 

@@ -5,13 +5,21 @@ from urllib.parse import urlencode
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.concurrency import run_in_threadpool
 from fastapi.requests import Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.templating import Jinja2Templates
 
 from itsmarta_api.marta.realtime import MARTA
 from itsmarta_api.marta.realtime.exceptions import APIKeyError, InvalidDirectionError
 from itsmarta_api.marta.realtime.models import BusPosition, Train
 from itsmarta_api.services.rail_schedules import Schedules
+from itsmarta_api.services.bus_incidents import BusIncidentTracker, BusSpeedIncident
+from itsmarta_api.services.bus_snapshots import (
+    BusSnapshotStore,
+    BusStateSnapshotBlob,
+    BusStateSnapshotMeta,
+    snapshot_meta_to_dict,
+)
+from itsmarta_api.services.bus_positions_poller import BusPositionsPoller, filter_buses
 from itsmarta_api.services.reliability import ReliabilityTracker
 
 LINE_KEYS = ("red", "gold", "blue", "green")
@@ -55,6 +63,9 @@ def init_routes(
     marta: MARTA,
     templates: Jinja2Templates,
     reliability: ReliabilityTracker,
+    bus_incidents: BusIncidentTracker,
+    bus_snapshots: BusSnapshotStore,
+    bus_positions_poller: BusPositionsPoller,
 ):
     htmx_router = APIRouter(prefix="/htmx")
     schedule_lookup = {
@@ -293,16 +304,15 @@ def init_routes(
         route_filter = _normalize_bus_route(route)
         vehicle_filter = vehicle_id.strip() if vehicle_id else None
 
-        error_message: str | None = None
-        try:
-            buses = await run_in_threadpool(
-                marta.get_buses,
-                route=route_filter,
-                vehicle_id=vehicle_filter,
-            )
-        except Exception:
-            buses = []
-            error_message = "Could not load bus positions. Please try again in a moment."
+        state = await bus_positions_poller.get_state()
+        buses = filter_buses(
+            state.buses,
+            route=route_filter,
+            vehicle_id=vehicle_filter,
+        )
+        error_message: str | None = state.error
+        if state.fetched_at is None:
+            error_message = "Bus poller is warming up. Please try again in a moment."
 
         buses_dict = buses_to_dicts(buses)
         buses_dict.sort(
@@ -317,8 +327,155 @@ def init_routes(
             "count": len(buses_dict),
             "route": route_filter,
             "vehicle_id": vehicle_filter,
-            "loaded_at": datetime.now().strftime("%I:%M:%S %p"),
+            "loaded_at": (
+                state.fetched_at.strftime("%I:%M:%S %p")
+                if state.fetched_at
+                else datetime.now().strftime("%I:%M:%S %p")
+            ),
             "error": error_message,
+        }
+        return JSONResponse(payload)
+
+    @htmx_router.get("/buses/snapshots")
+    async def bus_snapshot_index(
+        limit: int = Query(default=120, ge=1, le=2000),
+        route: str | None = Query(default=None),
+        vehicle_id: str | None = Query(default=None),
+        since_hours: int | None = Query(default=None, ge=1, le=24 * 365),
+    ):
+        route_filter = _normalize_bus_route(route)
+        vehicle_filter = vehicle_id.strip() if vehicle_id else None
+        snapshots = await run_in_threadpool(
+            bus_snapshots.list_snapshots,
+            limit=limit,
+            since_hours=since_hours,
+            route=route_filter,
+            vehicle_id=vehicle_filter,
+        )
+        total_payload_bytes = sum(snapshot.payload_size for snapshot in snapshots)
+        total_raw_bytes = sum(snapshot.raw_size for snapshot in snapshots)
+
+        payload = {
+            "snapshots": [snapshot_meta_to_dict(snapshot) for snapshot in snapshots],
+            "count": len(snapshots),
+            "limit": limit,
+            "since_hours": since_hours,
+            "route": route_filter,
+            "vehicle_id": vehicle_filter,
+            "total_payload_bytes": total_payload_bytes,
+            "total_raw_bytes": total_raw_bytes,
+            "compression_ratio": (
+                round(total_raw_bytes / total_payload_bytes, 2)
+                if total_payload_bytes > 0
+                else None
+            ),
+            "loaded_at": datetime.now().strftime("%I:%M:%S %p"),
+        }
+        return JSONResponse(payload)
+
+    @htmx_router.get("/buses/snapshots/health")
+    async def bus_snapshot_health():
+        health = await run_in_threadpool(bus_snapshots.get_health_summary)
+        payload = {
+            **health,
+            "loaded_at": datetime.now().strftime("%I:%M:%S %p"),
+        }
+        return JSONResponse(payload)
+
+    @htmx_router.get("/buses/snapshots/timeline")
+    async def bus_snapshot_timeline(
+        limit: int = Query(default=72, ge=1, le=240),
+        since_hours: int = Query(default=1, ge=1, le=24 * 30),
+        since_minutes: int | None = Query(default=None, ge=30, le=24 * 60),
+        route: str | None = Query(default=None),
+        vehicle_id: str | None = Query(default=None),
+    ):
+        route_filter = _normalize_bus_route(route)
+        vehicle_filter = vehicle_id.strip() if vehicle_id else None
+        resolved_since_minutes = (
+            since_minutes if since_minutes is not None else since_hours * 60
+        )
+        snapshots, total_available, sample_step = await run_in_threadpool(
+            bus_snapshots.list_snapshots_sampled,
+            max_points=limit,
+            since_minutes=resolved_since_minutes,
+        )
+        timeline = await run_in_threadpool(
+            _build_bus_snapshot_timeline,
+            bus_snapshots,
+            snapshots,
+            route_filter,
+            vehicle_filter,
+        )
+        payload = {
+            "snapshots": timeline,
+            "count": len(timeline),
+            "limit": limit,
+            "since_minutes": resolved_since_minutes,
+            "since_hours": round(resolved_since_minutes / 60, 2),
+            "total_available": total_available,
+            "sample_step": sample_step,
+            "route": route_filter,
+            "vehicle_id": vehicle_filter,
+            "loaded_at": datetime.now().strftime("%I:%M:%S %p"),
+        }
+        return JSONResponse(payload)
+
+    @htmx_router.get("/buses/snapshots/latest/compact")
+    async def latest_bus_snapshot_compact(
+        route: str | None = Query(default=None),
+        vehicle_id: str | None = Query(default=None),
+    ):
+        route_filter = _normalize_bus_route(route)
+        vehicle_filter = vehicle_id.strip() if vehicle_id else None
+        snapshot = await run_in_threadpool(
+            bus_snapshots.get_latest_snapshot,
+            route=route_filter,
+            vehicle_id=vehicle_filter,
+        )
+        if not snapshot:
+            raise HTTPException(status_code=404, detail="No bus snapshots found")
+        return _compact_snapshot_response(snapshot, immutable=False)
+
+    @htmx_router.get("/buses/snapshots/{snapshot_id}/compact")
+    async def bus_snapshot_compact(snapshot_id: int):
+        snapshot = await run_in_threadpool(bus_snapshots.get_snapshot, snapshot_id)
+        if not snapshot:
+            raise HTTPException(status_code=404, detail="Bus snapshot not found")
+        return _compact_snapshot_response(snapshot, immutable=True)
+
+    @htmx_router.get("/buses/snapshots/{snapshot_id}/decoded")
+    async def bus_snapshot_decoded(snapshot_id: int):
+        snapshot = await run_in_threadpool(bus_snapshots.decode_snapshot, snapshot_id)
+        if not snapshot:
+            raise HTTPException(status_code=404, detail="Bus snapshot not found")
+        return JSONResponse(snapshot)
+
+    @htmx_router.get("/buses/incidents")
+    async def bus_incident_log(
+        limit: int = Query(default=100, ge=1, le=1000),
+        route: str | None = Query(default=None),
+        vehicle_id: str | None = Query(default=None),
+        since_hours: int | None = Query(default=None, ge=1, le=720),
+    ):
+        route_filter = _normalize_bus_route(route)
+        vehicle_filter = vehicle_id.strip() if vehicle_id else None
+        incidents = await run_in_threadpool(
+            bus_incidents.list_incidents,
+            limit=limit,
+            route=route_filter,
+            vehicle_id=vehicle_filter,
+            since_hours=since_hours,
+        )
+
+        payload = {
+            "incidents": bus_incidents_to_dicts(incidents),
+            "count": len(incidents),
+            "limit": limit,
+            "route": route_filter,
+            "vehicle_id": vehicle_filter,
+            "since_hours": since_hours,
+            "loaded_at": datetime.now().strftime("%I:%M:%S %p"),
         }
         return JSONResponse(payload)
 
@@ -530,3 +687,113 @@ def buses_to_dicts(buses: list[BusPosition]) -> list[dict[str, Any]]:
         )
 
     return records
+
+
+def bus_incidents_to_dicts(incidents: list[BusSpeedIncident]) -> list[dict[str, Any]]:
+    records: list[dict[str, Any]] = []
+    for incident in incidents:
+        records.append(
+            {
+                "id": incident.id,
+                "event_key": incident.event_key,
+                "recorded_at_utc": incident.recorded_at_utc,
+                "observed_at_utc": incident.observed_at_utc,
+                "route": incident.route,
+                "vehicle_id": incident.vehicle_id,
+                "entity_id": incident.entity_id,
+                "trip_id": incident.trip_id,
+                "latitude": incident.latitude,
+                "longitude": incident.longitude,
+                "speed_mph": incident.speed_mph,
+                "threshold_mph": incident.threshold_mph,
+                "direction_id": incident.direction_id,
+                "stop_id": incident.stop_id,
+                "current_status": incident.current_status,
+                "bearing": incident.bearing,
+            }
+        )
+
+    return records
+
+
+def _build_bus_snapshot_timeline(
+    store: BusSnapshotStore,
+    snapshots: list[BusStateSnapshotMeta],
+    route_filter: str | None,
+    vehicle_filter: str | None,
+) -> list[dict[str, Any]]:
+    timeline: list[dict[str, Any]] = []
+    for snapshot in reversed(snapshots):
+        decoded = store.decode_snapshot(snapshot.id)
+        if not decoded:
+            continue
+
+        buses = _filter_decoded_buses(
+            decoded.get("buses", []),
+            route_filter=route_filter,
+            vehicle_filter=vehicle_filter,
+        )
+        timeline.append(
+            {
+                "id": snapshot.id,
+                "captured_at_utc": snapshot.captured_at_utc,
+                "captured_at_epoch": snapshot.captured_at_epoch,
+                "count": len(buses),
+                "buses": buses,
+            }
+        )
+    return timeline
+
+
+def _filter_decoded_buses(
+    buses: list[dict[str, Any]],
+    *,
+    route_filter: str | None,
+    vehicle_filter: str | None,
+) -> list[dict[str, Any]]:
+    normalized_route = route_filter.strip().lower() if route_filter else None
+    normalized_vehicle = vehicle_filter.strip().lower() if vehicle_filter else None
+    if not normalized_route and not normalized_vehicle:
+        return buses
+
+    filtered: list[dict[str, Any]] = []
+    for bus in buses:
+        route_value = str(bus.get("route") or "").strip().lower()
+        vehicle_value = str(bus.get("vehicle_id") or "").strip().lower()
+
+        if normalized_route and route_value != normalized_route:
+            continue
+        if normalized_vehicle and vehicle_value != normalized_vehicle:
+            continue
+        filtered.append(bus)
+    return filtered
+
+
+def _compact_snapshot_response(
+    snapshot: BusStateSnapshotBlob,
+    *,
+    immutable: bool,
+) -> Response:
+    compression_ratio = (
+        round(snapshot.raw_size / snapshot.payload_size, 2)
+        if snapshot.payload_size > 0
+        else 0.0
+    )
+    headers = {
+        "X-Bus-Snapshot-Id": str(snapshot.id),
+        "X-Bus-Snapshot-Captured-At-Epoch": str(snapshot.captured_at_epoch),
+        "X-Bus-Snapshot-Captured-At-Utc": snapshot.captured_at_utc,
+        "X-Bus-Snapshot-Bus-Count": str(snapshot.bus_count),
+        "X-Bus-Snapshot-Payload-Encoding": snapshot.payload_encoding,
+        "X-Bus-Snapshot-Payload-Bytes": str(snapshot.payload_size),
+        "X-Bus-Snapshot-Raw-Bytes": str(snapshot.raw_size),
+        "X-Bus-Snapshot-Compression-Ratio": str(compression_ratio),
+        "Cache-Control": "public, max-age=31536000, immutable"
+        if immutable
+        else "no-store",
+    }
+    return Response(
+        content=snapshot.payload,
+        media_type="application/vnd.itsmarta.bus-snapshot",
+        headers=headers,
+    )

@@ -9,6 +9,8 @@
       id="buses-controls"
       class="buses-controls"
       data-endpoint="{{ request.state.domain }}/htmx/buses/positions"
+      data-history-endpoint="{{ request.state.domain }}/htmx/buses/snapshots/timeline"
+      data-history-health-endpoint="{{ request.state.domain }}/htmx/buses/snapshots/health"
     >
       <div class="buses-filter">
         <label class="field-label" for="buses-route">Route</label>
@@ -34,6 +36,13 @@
         />
       </div>
 
+      <div class="buses-trace-filter">
+        <label class="buses-trace-toggle" for="buses-trace-toggle">
+          <input id="buses-trace-toggle" type="checkbox" checked />
+          Traces
+        </label>
+      </div>
+
       <div class="buses-actions">
         <button class="btn btn-primary" type="submit">Apply</button>
         <button class="btn btn-secondary" type="button" id="buses-reset">
@@ -41,6 +50,84 @@
         </button>
       </div>
     </form>
+
+    <details class="buses-history-details" id="buses-history-details">
+      <summary class="buses-history-summary">History playback</summary>
+      <section class="buses-history" id="buses-history" aria-label="Historical playback">
+        <div class="buses-history-header">
+          <h3 class="buses-history-title">Timeline controls</h3>
+          <div class="buses-history-controls">
+            <div class="buses-history-range">
+              <label class="field-label buses-history-range-label" for="buses-history-lookback">
+                Range
+              </label>
+              <select
+                class="text-input buses-history-lookback-select"
+                id="buses-history-lookback"
+              >
+                <option value="30">30m</option>
+                <option value="60" selected>1h</option>
+                <option value="120">2h</option>
+                <option value="240">4h</option>
+                <option value="480">8h</option>
+                <option value="720">12h</option>
+                <option value="1440">24h</option>
+              </select>
+            </div>
+            <div class="buses-history-modes">
+              <button class="btn btn-secondary is-active" type="button" id="buses-mode-live">
+                Live
+              </button>
+              <button class="btn btn-secondary" type="button" id="buses-mode-history">
+                History
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="buses-history-slider-row">
+          <button class="btn btn-secondary" type="button" id="buses-history-prev" disabled>
+            Back
+          </button>
+          <div class="buses-history-slider-wrap">
+            <input
+              id="buses-history-slider"
+              class="buses-history-slider"
+              type="range"
+              min="0"
+              max="0"
+              step="1"
+              value="0"
+              disabled
+            />
+            <div class="buses-history-slider-range">
+              <span id="buses-history-start">--</span>
+              <span id="buses-history-end">--</span>
+            </div>
+          </div>
+          <button class="btn btn-secondary" type="button" id="buses-history-next" disabled>
+            Forward
+          </button>
+        </div>
+
+        <div class="buses-history-footer">
+          <div class="buses-history-meta">
+            <p class="buses-history-label" id="buses-history-label">
+              Live mode active
+            </p>
+            <span class="buses-history-speed" id="buses-history-speed"></span>
+          </div>
+          <div class="buses-history-actions">
+            <button class="btn btn-secondary" type="button" id="buses-history-autoplay" disabled>
+              Play
+            </button>
+            <button class="btn btn-secondary" type="button" id="buses-history-refresh">
+              Reload
+            </button>
+          </div>
+        </div>
+      </section>
+    </details>
 
     <p class="buses-meta" id="buses-meta">Loading live bus positions</p>
     <div class="error-banner buses-error is-hidden" id="buses-error"></div>
