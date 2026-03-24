@@ -34,6 +34,7 @@ class Config:
             'marta_reliability.sqlite'
         )
         self.domain = getenv('DOMAIN', '/')
+        self.static_version = getenv('STATIC_VERSION', '1')
 
 
 config = Config()

@@ -39,6 +39,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="MARTA Tracker", lifespan=lifespan)
 templates = Jinja2Templates(directory="itsmarta_api/templates")
+templates.env.globals["static_version"] = config.static_version
 app.mount("/static", StaticFiles(directory="itsmarta_api/static"), name="static")
 init_routes(
     app,

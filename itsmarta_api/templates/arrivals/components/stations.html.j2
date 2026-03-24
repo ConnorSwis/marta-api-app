@@ -37,7 +37,7 @@
           <span class="train-wait">
             {% if train.real_time %}
             <img
-              src="{{ request.state.domain }}/static/images/real-time.png"
+              src="{{ url_for('static', path='images/real-time.png') }}"
               alt="Realtime update"
               class="train-realtime-icon"
             />
