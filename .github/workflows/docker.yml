@@ -6,6 +6,12 @@ on:
       - master
       - dev
   workflow_dispatch:
+    inputs:
+      include_armv7:
+        description: "Include linux/arm/v7 build"
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   build-and-push:
@@ -34,11 +40,19 @@ jobs:
             echo "TAG=dev" >> $GITHUB_ENV
           fi
 
+      - name: Determine platforms
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.include_armv7 }}" == "true" ]]; then
+            echo "PLATFORMS=linux/amd64,linux/arm64,linux/arm/v7" >> $GITHUB_ENV
+          else
+            echo "PLATFORMS=linux/amd64,linux/arm64" >> $GITHUB_ENV
+          fi
+
       - name: Build and push image with caching
         uses: docker/build-push-action@v5
         with:
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/marta-api-app:${{ env.TAG }}
-          platforms: linux/amd64,linux/arm64,linux/arm/v7
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          platforms: ${{ env.PLATFORMS }}
+          cache-from: type=gha,scope=marta-api-app
+          cache-to: type=gha,mode=max,scope=marta-api-app
