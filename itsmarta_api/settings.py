@@ -1,3 +1,4 @@
+import hashlib
 from os import getenv
 from pathlib import Path
 from dotenv import load_dotenv
@@ -5,6 +6,29 @@ from dotenv import load_dotenv
 load_dotenv()
 
 __all__ = ['config']
+
+
+def _resolve_static_version(static_dir: Path) -> str:
+    override = getenv('STATIC_VERSION')
+    if override and override.strip():
+        return override.strip()
+
+    tracked_assets = [
+        static_dir / 'css' / 'app.css',
+        static_dir / 'js' / 'app.js',
+    ]
+    digest = hashlib.sha256()
+    any_asset_found = False
+    for asset_path in tracked_assets:
+        if not asset_path.exists() or not asset_path.is_file():
+            continue
+        any_asset_found = True
+        digest.update(str(asset_path.relative_to(static_dir)).encode('utf-8'))
+        digest.update(asset_path.read_bytes())
+
+    if not any_asset_found:
+        return '1'
+    return digest.hexdigest()[:12]
 
 
 class Config:
@@ -52,7 +76,8 @@ class Config:
             getenv('ARRIVALS_POLL_SECONDS', '10')
         )
         self.domain = getenv('DOMAIN', '/')
-        self.static_version = getenv('STATIC_VERSION', '1')
+        static_dir = Path(__file__).parent / 'static'
+        self.static_version = _resolve_static_version(static_dir)
 
 
 config = Config()
