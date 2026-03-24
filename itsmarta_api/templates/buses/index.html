@@ -1,0 +1,64 @@
+<main id="body" class="view-body" data-view="buses">
+  <section class="panel">
+    <div class="panel-header">
+      <h2 class="panel-title">Live bus map</h2>
+      <p class="panel-subtitle">Vehicle positions refresh every 15 seconds.</p>
+    </div>
+
+    <form
+      id="buses-controls"
+      class="buses-controls"
+      data-endpoint="{{ request.state.domain }}/htmx/buses/positions"
+    >
+      <div class="buses-filter">
+        <label class="field-label" for="buses-route">Route</label>
+        <input
+          class="text-input"
+          id="buses-route"
+          name="route"
+          type="text"
+          placeholder="190"
+          autocomplete="off"
+        />
+      </div>
+
+      <div class="buses-filter">
+        <label class="field-label" for="buses-vehicle">Vehicle ID</label>
+        <input
+          class="text-input"
+          id="buses-vehicle"
+          name="vehicle_id"
+          type="text"
+          placeholder="1601"
+          autocomplete="off"
+        />
+      </div>
+
+      <div class="buses-actions">
+        <button class="btn btn-primary" type="submit">Apply</button>
+        <button class="btn btn-secondary" type="button" id="buses-reset">Reset</button>
+      </div>
+    </form>
+
+    <p class="buses-meta" id="buses-meta">Loading live bus positions</p>
+    <div class="error-banner buses-error is-hidden" id="buses-error"></div>
+  </section>
+
+  <section class="panel buses-map-panel">
+    <div class="buses-map-layout">
+      <div class="buses-map-canvas">
+        <div id="bus-map" class="bus-map" aria-label="Live MARTA bus map"></div>
+      </div>
+
+      <aside class="buses-legend" aria-label="Route legend">
+        <div class="buses-legend-header">
+          <h3 class="buses-legend-title">Routes</h3>
+          <p class="buses-legend-subtitle" id="buses-legend-summary">Loading</p>
+        </div>
+        <div class="buses-legend-list" id="buses-legend-list">
+          <p class="buses-legend-empty">Loading route legend</p>
+        </div>
+      </aside>
+    </div>
+  </section>
+</main>

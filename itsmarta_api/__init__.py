@@ -1,3 +1,4 @@
+import logging
 from itsmarta_api.marta.real_time import MARTA
 from itsmarta_api.config import config
 from contextlib import asynccontextmanager
@@ -16,26 +17,57 @@ from itsmarta_api.middleware.context import ContextMiddleware
 
 schedules = Schedules()
 marta = MARTA(api_key=config.marta_api_key)
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
         await schedules.init()
-        yield
     except Exception as e:
-        print(f"Exception: {e}")
+        logger.exception("Failed during app lifespan startup: %s", e)
+    yield
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(title="MARTA Tracker", lifespan=lifespan)
 templates = Jinja2Templates(directory="itsmarta_api/templates")
 app.mount("/static", StaticFiles(directory="itsmarta_api/static"), name="static")
 htmx_routes.init_routes(app, schedules=schedules,
                         templates=templates, marta=marta)
 
 
+def render_shell(request: Request, initial_view: str):
+    initial_hx_path = f"{request.state.domain}/htmx/{initial_view}"
+    return templates.TemplateResponse(
+        "base.html",
+        {
+            "request": request,
+            "initial_view": initial_view,
+            "initial_hx_path": initial_hx_path,
+        },
+    )
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    return templates.TemplateResponse("base.html", {"request": request})
+    return render_shell(request, "arrivals")
+
+
+@app.get("/arrivals", response_class=HTMLResponse)
+@app.get("/arrivals/", response_class=HTMLResponse)
+async def arrivals(request: Request):
+    return render_shell(request, "arrivals")
+
+
+@app.get("/schedules", response_class=HTMLResponse)
+@app.get("/schedules/", response_class=HTMLResponse)
+async def schedules_page(request: Request):
+    return render_shell(request, "schedules")
+
+
+@app.get("/buses", response_class=HTMLResponse)
+@app.get("/buses/", response_class=HTMLResponse)
+async def buses(request: Request):
+    return render_shell(request, "buses")
 
 app.middleware("http")(ContextMiddleware.dispatch)
 

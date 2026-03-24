@@ -21,10 +21,14 @@ class Config:
         self.schedule_dir = Path(__file__).parent / \
             getenv('SCHEDULE_DIR', 'schedules')
         if not self.schedule_dir.exists():
-            self.schedule_dir.mkdir()
+            self.schedule_dir.mkdir(parents=True, exist_ok=True)
 
         self.marta_cache_expire = int(getenv('MARTA_CACHE_EXPIRE', 30))
         self.marta_api_key = getenv('MARTA_API_KEY')
+        self.marta_bus_positions_url = getenv(
+            'MARTA_BUS_POSITIONS_URL',
+            'https://gtfs-rt.itsmarta.com/TMGTFSRealTimeWebService/Vehicle/VehiclePositions.pb'
+        )
         self.domain = getenv('DOMAIN', '/')
 
 

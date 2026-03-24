@@ -1,50 +1,76 @@
 <!DOCTYPE html>
-<html lang="en" class="m-0 p0 overscroll-none">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{% block title %}{% endblock %}</title>
-    <script src="https://unpkg.com/htmx.org/dist/htmx.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-      #body {
-        min-height: calc(100vh - 64px);
-      }
-    </style>
+    <title>{% block title %}MARTA Transit Tracker{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="{{ request.state.domain }}/static/css/app.css" />
+    <script src="{{ request.state.domain }}/static/js/app.js" defer></script>
   </head>
-  <body class="h-full m-0 p0 overscroll-none">
-    <nav class="h-16 text-white bg-gray-800">
-      <ul class="flex items-center justify-center h-16 gap-4">
-        <li>
-          <button
-            hx-get="{{ request.state.domain }}/htmx/arrivals"
-            hx-target="#body"
-            hx-swap="outerHTML"
-            class="hover:underline"
-            data-nav="arrivals"
-          >
-            Train Arrivals
-          </button>
-        </li>
-        <li>
-          <button
-            hx-get="{{ request.state.domain }}/htmx/schedules"
-            hx-target="#body"
-            hx-swap="outerHTML"
-            class="hover:underline"
-            data-nav="schedules"
-          >
-            Train Schedules
-          </button>
-        </li>
-      </ul>
-    </nav>
+  <body class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <h1 class="brand-title">MARTA Transit Tracker</h1>
+      </div>
+      <nav class="nav-tabs" aria-label="Primary">
+        <button
+          class="nav-tab {% if initial_view == 'arrivals' %}is-active{% endif %}"
+          data-view-target="arrivals"
+          data-view-path="{{ request.state.domain }}/arrivals"
+          hx-get="{{ request.state.domain }}/htmx/arrivals"
+          hx-target="#body"
+          hx-swap="outerHTML"
+          hx-indicator="#global-indicator"
+        >
+          Arrivals
+        </button>
+        <button
+          class="nav-tab {% if initial_view == 'schedules' %}is-active{% endif %}"
+          data-view-target="schedules"
+          data-view-path="{{ request.state.domain }}/schedules"
+          hx-get="{{ request.state.domain }}/htmx/schedules"
+          hx-target="#body"
+          hx-swap="outerHTML"
+          hx-indicator="#global-indicator"
+        >
+          Schedules
+        </button>
+        <button
+          class="nav-tab {% if initial_view == 'buses' %}is-active{% endif %}"
+          data-view-target="buses"
+          data-view-path="{{ request.state.domain }}/buses"
+          hx-get="{{ request.state.domain }}/htmx/buses"
+          hx-target="#body"
+          hx-swap="outerHTML"
+          hx-indicator="#global-indicator"
+        >
+          Bus Map
+        </button>
+      </nav>
+    </header>
+
+    <div id="global-indicator" class="global-indicator htmx-indicator">Updating</div>
+
     <main
       id="body"
-      class="flex-grow h-full"
-      hx-get="{{ request.state.domain }}/htmx/schedules"
+      class="view-body"
+      data-view="{{ initial_view or 'arrivals' }}"
+      hx-get="{{ initial_hx_path or (request.state.domain ~ '/htmx/arrivals') }}"
       hx-trigger="load"
       hx-swap="outerHTML"
+      hx-indicator="#global-indicator"
     ></main>
   </body>
 </html>

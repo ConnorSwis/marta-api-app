@@ -1,53 +1,59 @@
-<main id="body" class="pt-2 m-0 font-sans">
-  <div class="flex justify-center gap-4 mb-4">
-    <button
-      class="w-12 h-12 rounded-full font-bold text-white text-center leading-[3rem] bg-red-500 hover:opacity-80 focus:outline-none focus:ring-4 focus:ring-gray-700 ring-4 ring-gray-700"
-      hx-get="{{ request.state.domain }}/htmx/schedule/red"
-      hx-target="#mainContent"
-      hx-swap="innerHTML"
-      hx-trigger="load"
-    ></button>
+<main id="body" class="view-body" data-view="schedules">
+  <section class="panel">
+    <div class="panel-header">
+      <h2 class="panel-title">Train schedules</h2>
+      <p class="panel-subtitle">Choose a line to load timetable data.</p>
+    </div>
 
-    <button
-      class="w-12 h-12 rounded-full font-bold text-black text-center leading-[3rem] bg-yellow-400 hover:opacity-80 focus:outline-none focus:ring-4 focus:ring-gray-700"
-      hx-get="{{ request.state.domain }}/htmx/schedule/gold"
-      hx-target="#mainContent"
-      hx-swap="innerHTML"
-    ></button>
+    <div class="schedule-line-row" id="schedule-line-switcher">
+      <button
+        class="schedule-line-btn line-red is-active"
+        data-line="red"
+        hx-get="{{ request.state.domain }}/htmx/schedule/red"
+        hx-target="#schedule-content"
+        hx-swap="innerHTML"
+        hx-trigger="load"
+        hx-indicator="#global-indicator"
+      >
+        Red
+      </button>
 
-    <button
-      class="w-12 h-12 rounded-full font-bold text-white text-center leading-[3rem] bg-blue-500 hover:opacity-80 focus:outline-none focus:ring-4 focus:ring-gray-700"
-      hx-get="{{ request.state.domain }}/htmx/schedule/blue"
-      hx-target="#mainContent"
-      hx-swap="innerHTML"
-    ></button>
+      <button
+        class="schedule-line-btn line-gold"
+        data-line="gold"
+        hx-get="{{ request.state.domain }}/htmx/schedule/gold"
+        hx-target="#schedule-content"
+        hx-swap="innerHTML"
+        hx-indicator="#global-indicator"
+      >
+        Gold
+      </button>
 
-    <button
-      class="w-12 h-12 rounded-full font-bold text-white text-center leading-[3rem] bg-green-600 hover:opacity-80 focus:outline-none focus:ring-4 focus:ring-gray-700"
-      hx-get="{{ request.state.domain }}/htmx/schedule/green"
-      hx-target="#mainContent"
-      hx-swap="innerHTML"
-    ></button>
-  </div>
+      <button
+        class="schedule-line-btn line-blue"
+        data-line="blue"
+        hx-get="{{ request.state.domain }}/htmx/schedule/blue"
+        hx-target="#schedule-content"
+        hx-swap="innerHTML"
+        hx-indicator="#global-indicator"
+      >
+        Blue
+      </button>
 
-  <div id="mainContent" class="text-center">
-    <p>Select a line to see the schedule.</p>
-  </div>
+      <button
+        class="schedule-line-btn line-green"
+        data-line="green"
+        hx-get="{{ request.state.domain }}/htmx/schedule/green"
+        hx-target="#schedule-content"
+        hx-swap="innerHTML"
+        hx-indicator="#global-indicator"
+      >
+        Green
+      </button>
+    </div>
+  </section>
 
-  <script>
-    document.querySelectorAll(".w-12").forEach((button) => {
-      button.addEventListener("click", (event) => {
-        document
-          .querySelectorAll(".ring-4")
-          .forEach((btn) => btn.classList.remove("ring-4", "ring-gray-700"));
-
-        event.currentTarget.classList.add("ring-4", "ring-gray-700");
-      });
-    });
-
-    window.addEventListener("DOMContentLoaded", () => {
-      const redButton = document.querySelector(".bg-red-500");
-      redButton.click();
-    });
-  </script>
+  <section id="schedule-content" class="panel schedule-content">
+    <p class="placeholder">Loading schedule</p>
+  </section>
 </main>

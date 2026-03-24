@@ -1,0 +1,15 @@
+.git
+.github
+.agents
+.DS_Store
+.env
+.env.*
+__pycache__/
+*.py[cod]
+*.sqlite
+*.sqlite-*
+node_modules/
+.venv/
+venv/
+dist/
+build/

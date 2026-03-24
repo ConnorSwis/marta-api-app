@@ -1,102 +1,121 @@
-<div id="{{context.line}}-schedule-snippet">
-  {% set selector = "#" ~ context.line ~ "-schedule-snippet" %}
+<div id="{{ context.line_key }}-schedule-snippet">
+  {% set selector = "#" ~ context.line_key ~ "-schedule-snippet" %}
 
-  <!-- Your existing styles stay the same. -->
   <style>
     {{ selector }} {
       display: flex;
       flex-direction: column;
-      font-family: Arial, Helvetica, sans-serif;
-      font-size: 16px;
+      font-family: "IBM Plex Sans", "Avenir Next", sans-serif;
+      font-size: 14px;
       margin: 0;
       padding: 0;
+      gap: 8px;
+      color: #1c1917;
     }
 
-    {{ selector }} .tab-menu {
+    {{ selector }} .schedule-header {
       display: flex;
-      gap: 10px;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      color: #44403c;
+      font-size: 0.86rem;
+    }
+
+    {{ selector }} .refresh-btn {
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1px solid #d6d3d1;
+      background: #ffffff;
+      color: #44403c;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 500;
+    }
+
+    {{ selector }} .tab-menu,
+    {{ selector }} .direction-menu {
+      display: flex;
+      gap: 6px;
       flex-wrap: nowrap;
       overflow: auto;
-      padding: 10px;
-      justify-content: center;
+      padding-bottom: 2px;
     }
 
-    {{ selector }} .tab-menu button {
-      padding: 10px 20px;
+    {{ selector }} .tab-menu button,
+    {{ selector }} .direction-menu button {
+      padding: 6px 10px;
       cursor: pointer;
-      border: 1px solid #ccc;
-      background-color: #f9f9f9;
+      border: 1px solid #d6d3d1;
+      background-color: #ffffff;
+      color: #44403c;
+      border-radius: 8px;
+      white-space: nowrap;
+      font-size: 0.84rem;
+      font-weight: 500;
     }
 
-    {{ selector }} .tab-menu button.active {
-      background-color: #ddd;
+    {{ selector }} .tab-menu button.active,
+    {{ selector }} .direction-menu button.active {
+      background-color: #1c1917;
+      border-color: #1c1917;
+      color: #ffffff;
     }
 
     {{ selector }} .tab-content {
       display: none;
       flex-direction: column;
     }
+
     {{ selector }} .tab-content.active {
       display: flex;
     }
 
     {{ selector }} .day-container {
       flex: 1;
-      padding: 10px;
     }
 
     {{ selector }} .direction-container {
       display: flex;
       flex-direction: column;
-      gap: 10px;
-      text-align: center;
-    }
-
-    {{ selector }} .direction-menu {
-      display: flex;
-      gap: 10px;
-      justify-content: center;
-      overflow: auto;
-    }
-
-    {{ selector }} .direction-menu button {
-      padding: 8px 16px;
-      cursor: pointer;
-      border: 1px solid #ccc;
-      background-color: #f9f9f9;
-    }
-
-    {{ selector }} .direction-menu button.active {
-      background-color: #ddd;
+      gap: 8px;
     }
 
     {{ selector }} .direction-content {
       display: none;
     }
+
     {{ selector }} .direction-content.active {
       display: block;
     }
 
     {{ selector }} .schedule-container {
       margin: 0 auto;
-      border: 1px solid #ccc;
-      overflow: auto;
-      max-width: min(calc(100vw - 50px), 800px);
-      max-height: min(max(calc(100vh - 300px), 400px), 800px);
+      border: 1px solid #d6d3d1;
+      border-radius: 8px;
+      overflow-x: auto;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      max-width: min(calc(100vw - 48px), 960px);
+      max-height: min(max(calc(100vh - 300px), 380px), 760px);
+      background: #ffffff;
     }
 
     {{ selector }} .schedule-table {
-      width: 100%;
-      border-collapse: separate;
-      border-spacing: 0;
+      width: max-content;
+      min-width: 100%;
+      border-collapse: collapse;
       table-layout: auto;
+      font-family: "IBM Plex Mono", "JetBrains Mono", monospace;
+      font-size: 0.74rem;
     }
 
     {{ selector }} .schedule-th,
     {{ selector }} .schedule-td {
-      border: 1px solid #ccc;
-      padding: 8px;
-      text-align: center;
+      border: 1px solid #e7e5e4;
+      padding: 6px 8px;
+      text-align: left;
       white-space: nowrap;
       box-shadow: none;
     }
@@ -105,33 +124,43 @@
       position: sticky;
       top: 0;
       z-index: 1;
-      background-color: #f9f9f9;
-      font-size: 1em;
-      height: 80px;
-      line-height: 1.2;
-      vertical-align: middle;
-      text-align: center;
+      background-color: #f5f5f4;
+      font-weight: 600;
     }
 
-    {{ selector }} .schedule-sideways-text {
-      text-orientation: mixed;
-      white-space: normal;
-    }
-
-    {{ selector }} .schedule-tbody .schedule-tr:nth-child(odd) {
-      background-color: #e9e9e9;
-    }
-    {{ selector }} .schedule-tbody .schedule-tr:nth-child(even) {
-      background-color: #ffffff;
+    {{ selector }} .error-banner {
+      border: 1px solid rgba(185, 28, 28, 0.35);
+      background: #fef2f2;
+      color: #991b1b;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 0.85rem;
     }
   </style>
 
   <main>
-    {% set days = ["weekday", "saturday", "sunday"] %} {% set line_lower =
-    context.line|lower %} {% if line_lower in ["red", "gold"] %} {% set
-    direction1 = "northbound" %} {% set direction2 = "southbound" %} {% else %}
-    {% set direction1 = "eastbound" %} {% set direction2 = "westbound" %} {%
-    endif %}
+    {% set days = ["weekday", "saturday", "sunday"] %} {% if context.line_key in
+    ["red", "gold"] %} {% set direction1 = "northbound" %} {% set direction2 =
+    "southbound" %} {% else %} {% set direction1 = "eastbound" %} {% set
+    direction2 = "westbound" %} {% endif %}
+
+    <div class="schedule-header">
+      <span>Loaded at {{ context.loaded_at }}</span>
+      <button
+        class="refresh-btn"
+        type="button"
+        hx-get="{{ request.state.domain }}/htmx/schedule/{{ context.line_key }}?refresh=true"
+        hx-target="#schedule-content"
+        hx-swap="innerHTML"
+        hx-indicator="#global-indicator"
+      >
+        Refresh
+      </button>
+    </div>
+
+    {% if context.error %}
+    <div class="error-banner">{{ context.error }}</div>
+    {% endif %}
 
     <div class="tab-menu">
       {% for day in days %}
@@ -171,7 +200,7 @@
                   <tr class="schedule-tr">
                     {% for station in schedule.keys() %}
                     <th class="schedule-th">
-                      <div class="schedule-sideways-text">{{ station }}</div>
+                      {{ station | replace(' Station', '') }}
                     </th>
                     {% endfor %}
                   </tr>
@@ -200,7 +229,7 @@
                   <tr class="schedule-tr">
                     {% for station in schedule.keys() %}
                     <th class="schedule-th">
-                      <div class="schedule-sideways-text">{{ station }}</div>
+                      {{ station | replace(' Station', '') }}
                     </th>
                     {% endfor %}
                   </tr>
@@ -226,12 +255,10 @@
     {% endfor %}
   </main>
 
-  <!-- JavaScript isolated to this snippet -->
   <script>
     (function () {
       "use strict";
 
-      // Grab the container for this snippet only
       const snippetContainer = document.querySelector("{{ selector }}");
       if (!snippetContainer) return;
 
@@ -239,7 +266,6 @@
       const tabButtons = snippetContainer.querySelectorAll(".tab-menu button");
       const tabContents = snippetContainer.querySelectorAll(".tab-content");
 
-      // Handle the top-level day (weekday/saturday/sunday) tabs
       tabButtons.forEach((button) => {
         button.addEventListener("click", () => {
           tabButtons.forEach((btn) => btn.classList.remove("active"));
@@ -247,7 +273,7 @@
 
           button.classList.add("active");
           const target = snippetContainer.querySelector(
-            button.dataset.tabTarget
+            button.dataset.tabTarget,
           );
           if (target) {
             target.classList.add("active");
@@ -256,12 +282,11 @@
         });
       });
 
-      // Handle direction tabs inside each day
       snippetContainer
         .querySelectorAll(".direction-container")
         .forEach((container) => {
           const dirButtons = container.querySelectorAll(
-            ".direction-menu button"
+            ".direction-menu button",
           );
           const dirContents = container.querySelectorAll(".direction-content");
 
@@ -274,39 +299,35 @@
               const target = container.querySelector(btn.dataset.tabTarget);
               if (target) target.classList.add("active");
 
-              // Update current direction
-              if (btn.dataset.tabTarget.includes("{{ direction1 }}")) {
-                currentDirection = "{{ direction1 }}";
-              } else {
-                currentDirection = "{{ direction2 }}";
-              }
+              currentDirection = btn.dataset.tabTarget.includes(
+                "{{ direction1 }}",
+              )
+                ? "{{ direction1 }}"
+                : "{{ direction2 }}";
             });
           });
         });
 
-      // Set the direction (eastbound/westbound or northbound/southbound)
       function setDirection(tabContent, direction) {
         const directionContainer = tabContent.querySelector(
-          ".direction-container"
+          ".direction-container",
         );
         if (!directionContainer) return;
 
         const dirButtons = directionContainer.querySelectorAll(
-          ".direction-menu button"
+          ".direction-menu button",
         );
         const dirContents =
           directionContainer.querySelectorAll(".direction-content");
 
-        // Reset active states
         dirButtons.forEach((b) => b.classList.remove("active"));
         dirContents.forEach((c) => c.classList.remove("active"));
 
-        // Activate the currently selected direction
         const matchingButton = Array.from(dirButtons).find((b) =>
-          b.dataset.tabTarget.includes(direction)
+          b.dataset.tabTarget.includes(direction),
         );
         const matchingContent = Array.from(dirContents).find((c) =>
-          c.id.includes(direction)
+          c.id.includes(direction),
         );
 
         if (matchingButton) matchingButton.classList.add("active");

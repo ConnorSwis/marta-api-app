@@ -1,4 +1,6 @@
+import asyncio
 import json
+import logging
 from enum import Enum
 from typing import Dict, Any
 from itsmarta_api.config import config
@@ -6,6 +8,8 @@ from itsmarta_api.config import config
 import httpx
 from bs4 import BeautifulSoup
 from pandas import DataFrame
+
+logger = logging.getLogger(__name__)
 
 
 class Lines(Enum):
@@ -30,10 +34,7 @@ class NSDaySchedule:
         self.southbound: DataFrame = DataFrame()
 
     def __repr__(self) -> str:
-        return (
-            f"Northbound:\n{self.northbound}\n\n"
-            f"Southbound:\n{self.southbound}\n"
-        )
+        return f"Northbound:\n{self.northbound}\n\n" f"Southbound:\n{self.southbound}\n"
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -53,10 +54,7 @@ class EWDaySchedule:
         self.westbound: DataFrame = DataFrame()
 
     def __repr__(self) -> str:
-        return (
-            f"Eastbound:\n{self.eastbound}\n\n"
-            f"Westbound:\n{self.westbound}\n"
-        )
+        return f"Eastbound:\n{self.eastbound}\n\n" f"Westbound:\n{self.westbound}\n"
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -69,10 +67,10 @@ class EWDaySchedule:
 
 
 DIRECTIONS_MAP: Dict[Lines, Dict[str, str]] = {
-    Lines.RED:   {"Northbound": "northbound",  "Southbound": "southbound"},
-    Lines.GOLD:  {"Northbound": "northbound",  "Southbound": "southbound"},
-    Lines.BLUE:  {"Eastbound":  "eastbound",   "Westbound":  "westbound"},
-    Lines.GREEN: {"Eastbound":  "eastbound",   "Westbound":  "westbound"},
+    Lines.RED: {"Northbound": "northbound", "Southbound": "southbound"},
+    Lines.GOLD: {"Northbound": "northbound", "Southbound": "southbound"},
+    Lines.BLUE: {"Eastbound": "eastbound", "Westbound": "westbound"},
+    Lines.GREEN: {"Eastbound": "eastbound", "Westbound": "westbound"},
 }
 
 
@@ -99,28 +97,37 @@ class AbsSchedule:
         """
         soup = BeautifulSoup(content, "html.parser")
         route_schedules: list[BeautifulSoup] = soup.find_all(
-            "div", class_="route-schedules__item")
+            "div", class_="route-schedules__item"
+        )
         if not route_schedules:
             raise ValueError("No schedule data found on the page.")
 
         parsed_data: Dict[str, Dict[str, DataFrame]] = {}
 
         for div in route_schedules:
-            schedule_label = div.find(
-                "a", class_="route-schedules__item-trigger")
+            schedule_label = div.find("a", class_="route-schedules__item-trigger")
             if not schedule_label:
-                print("No schedule type found.")
+                logger.warning(
+                    "No schedule label found for one schedule block on %s line.",
+                    self.line.value,
+                )
                 continue
 
-            schedule_type = DAY_SCHEDULE_MAPPING.get(
-                schedule_label.text.strip())
+            schedule_type = DAY_SCHEDULE_MAPPING.get(schedule_label.text.strip())
             if not schedule_type:
-                print(f"Warning: Unexpected schedule type: {
-                      schedule_label.text.strip()}")
+                logger.warning(
+                    "Unexpected schedule type '%s' for line '%s'",
+                    schedule_label.text.strip(),
+                    self.line.value,
+                )
                 continue
 
-            directions_html = div.find(
-                "ul", class_="route-schedules__tabs").find_all("li")
+            directions_container = div.find("ul", class_="route-schedules__tabs")
+            if not directions_container:
+                raise ValueError(
+                    f"Missing directions section for {schedule_type} on {self.line.value} line."
+                )
+            directions_html = directions_container.find_all("li")
             directions = [li.find("a").text.strip() for li in directions_html]
 
             valid_dirs = set(DIRECTIONS_MAP[self.line].keys())
@@ -142,12 +149,22 @@ class AbsSchedule:
 
             for direction, table in zip(directions, tables):
                 header = table.find("thead")
+                if not header:
+                    raise ValueError(
+                        f"Missing header row for {schedule_type} {direction} on {self.line.value} line."
+                    )
                 stations = [th.text.strip() for th in header.find_all("th")]
 
                 tbody = table.find("tbody")
-                rows = [[td.text.strip() for td in tr.find_all("td")]
-                        for tr in tbody.find_all("tr")]
-                rows = [row[:len(stations)] for row in rows]
+                if not tbody:
+                    raise ValueError(
+                        f"Missing table body for {schedule_type} {direction} on {self.line.value} line."
+                    )
+                rows = [
+                    [td.text.strip() for td in tr.find_all("td")]
+                    for tr in tbody.find_all("tr")
+                ]
+                rows = [row[: len(stations)] for row in rows]
                 parsed_table = DataFrame(rows, columns=stations)
                 parsed_data[schedule_type][direction] = parsed_table
 
@@ -160,15 +177,16 @@ class AbsSchedule:
         schedules_dir = config.schedule_dir
         output_path = schedules_dir / filename
 
-        with output_path.open("w") as file:
+        with output_path.open("w", encoding="utf-8") as file:
             json.dump(self.to_dict(), file)
 
-        print(f"Saved schedule to {output_path}")
+        logger.info("Saved %s schedule to %s", self.line.value, output_path)
 
     async def _fetch_line_schedule(self, *, save: bool = True) -> None:
         url = get_line_website(self.line)
         async with httpx.AsyncClient() as client:
-            response = await client.get(url)
+            response = await client.get(url, timeout=20)
+            response.raise_for_status()
             content = response.text
 
         schedule_data = self._parse_schedule_content(content)
@@ -182,8 +200,6 @@ class AbsSchedule:
         if save:
             self.__write_to_json()
 
-    def __init__(self, line: Lines):
-        raise NotImplementedError
 
     async def init(self, *, fetch: bool = False) -> None:
         raise NotImplementedError
@@ -234,7 +250,7 @@ class NSSchedule(AbsSchedule):
                 f"No schedule file found for {self.line.name} at {input_path}"
             )
 
-        with input_path.open("r") as file:
+        with input_path.open("r", encoding="utf-8") as file:
             schedule_data = json.load(file)
 
         for day_key in ["weekday", "saturday", "sunday"]:
@@ -289,7 +305,7 @@ class EWSchedule(AbsSchedule):
                 f"No schedule file found for {self.line.name} at {input_path}"
             )
 
-        with input_path.open("r") as file:
+        with input_path.open("r", encoding="utf-8") as file:
             schedule_data = json.load(file)
 
         for day_key in ["weekday", "saturday", "sunday"]:
@@ -319,10 +335,12 @@ class Schedules:
         self.green = EWSchedule(Lines.GREEN)
 
     async def init(self) -> None:
-        await self.red.init()
-        await self.gold.init()
-        await self.blue.init()
-        await self.green.init()
+        await asyncio.gather(
+            self.red.init(),
+            self.gold.init(),
+            self.blue.init(),
+            self.green.init(),
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         return {
