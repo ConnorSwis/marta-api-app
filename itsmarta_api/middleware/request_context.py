@@ -1,6 +1,6 @@
 from fastapi.requests import Request
 from urllib.parse import urlparse
-from itsmarta_api.config import config
+from itsmarta_api.settings import config
 
 
 class ContextMiddleware:

@@ -28,7 +28,7 @@ poetry run start
 or
 
 ```bash
-uvicorn itsmarta_api:app --reload
+uvicorn itsmarta_api.app:app --reload
 ```
 
 Then open `http://localhost:8000`.
@@ -37,6 +37,6 @@ Then open `http://localhost:8000`.
 
 - Arrivals and schedule views are loaded with HTMX fragments.
 - Arrivals auto-refresh every 30 seconds while preserving active filters.
-- Bus map auto-refreshes every 15 seconds and supports route/vehicle filters.
+- Bus map auto-refreshes every 10 seconds and supports route/vehicle filters.
 - Schedule views support explicit refresh from MARTA source pages.
 - If MARTA API/schedule fetch fails, UI returns a readable error state instead of a hard crash.

@@ -1,18 +1,18 @@
 from __future__ import annotations
 
 import json
+import importlib
 from functools import wraps
 from os import getenv
 from typing import Any, List, Union
 
 import requests
 import requests_cache
-from google.transit import gtfs_realtime_pb2
 
-from itsmarta_api.config import config
+from itsmarta_api.settings import config
 
 from .exceptions import APIKeyError, InvalidDirectionError
-from .vehicles import BusPosition, Train
+from .models import BusPosition, Train
 
 _CACHE_EXPIRE = config.marta_cache_expire
 _BASE_URL = "https://developerservices.itsmarta.com:18096"
@@ -45,7 +45,9 @@ def require_api_key(func):
     return with_key
 
 
-def _convert_direction(user_direction: str | None, vehicle_type: str = "bus") -> Union[str, None]:
+def _convert_direction(
+    user_direction: str | None, vehicle_type: str = "bus"
+) -> Union[str, None]:
     if not user_direction:
         return None
 
@@ -87,7 +89,9 @@ def _get_data(endpoint: str, api_key: str) -> list[dict[str, Any]]:
     try:
         response.raise_for_status()
     except requests.HTTPError as exc:
-        raise RuntimeError(f"MARTA API request failed with status {response.status_code}.") from exc
+        raise RuntimeError(
+            f"MARTA API request failed with status {response.status_code}."
+        ) from exc
 
     try:
         payload = response.json()
@@ -100,7 +104,7 @@ def _get_data(endpoint: str, api_key: str) -> list[dict[str, Any]]:
     return payload
 
 
-def _get_feed(url: str) -> gtfs_realtime_pb2.FeedMessage:
+def _get_feed(url: str) -> Any:
     try:
         # Bus positions are polled frequently for the map, so bypass response cache.
         with requests_cache.disabled():
@@ -115,16 +119,21 @@ def _get_feed(url: str) -> gtfs_realtime_pb2.FeedMessage:
             f"MARTA bus GTFS-realtime request failed with status {response.status_code}."
         ) from exc
 
-    feed = gtfs_realtime_pb2.FeedMessage()
+    gtfs_realtime_pb2 = importlib.import_module("google.transit.gtfs_realtime_pb2")
+    feed = getattr(gtfs_realtime_pb2, "FeedMessage")()
     try:
         feed.ParseFromString(response.content)
     except Exception as exc:
-        raise RuntimeError("MARTA bus GTFS-realtime feed returned invalid protobuf data.") from exc
+        raise RuntimeError(
+            "MARTA bus GTFS-realtime feed returned invalid protobuf data."
+        ) from exc
 
     return feed
 
 
-def _filter_response(response: list[dict[str, Any]], filters: dict[str, Any]) -> List[dict[str, Any]]:
+def _filter_response(
+    response: list[dict[str, Any]], filters: dict[str, Any]
+) -> List[dict[str, Any]]:
     valid_items: list[dict[str, Any]] = []
     for item in response:
         valid = True
@@ -169,10 +178,12 @@ class MARTA:
         :param api_key: API key to override environment variable
         :return: list of Train objects
         """
-        data = _get_data(endpoint=_TRAIN_PATH, api_key=api_key)
+        data = _get_data(endpoint=_TRAIN_PATH, api_key=api_key)  # type: ignore[arg-type]
         filters = {
             "LINE": line,
-            "DIRECTION": _convert_direction(user_direction=direction, vehicle_type="train"),
+            "DIRECTION": _convert_direction(
+                user_direction=direction, vehicle_type="train"
+            ),
             "STATION": station,
             "DESTINATION": destination,
         }
@@ -217,23 +228,32 @@ class MARTA:
                 continue
 
             resolved_vehicle_id = (
-                (vehicle_details.label or vehicle_details.id or entity.id or "").strip()
-            )
+                vehicle_details.label or vehicle_details.id or entity.id or ""
+            ).strip()
             if not resolved_vehicle_id:
                 resolved_vehicle_id = "unknown"
 
-            if normalized_vehicle and resolved_vehicle_id.lower() != normalized_vehicle.lower():
+            if (
+                normalized_vehicle
+                and resolved_vehicle_id.lower() != normalized_vehicle.lower()
+            ):
                 continue
 
-            timestamp = int(vehicle_position.timestamp) if vehicle_position.timestamp else None
+            timestamp = (
+                int(vehicle_position.timestamp) if vehicle_position.timestamp else None
+            )
             bearing = float(position.bearing) if position.HasField("bearing") else None
             speed_mph = (
                 round(float(position.speed) * 2.23694, 2)
                 if position.HasField("speed")
                 else None
             )
-            direction_id = int(trip.direction_id) if trip.HasField("direction_id") else None
-            current_status = _BUS_STATUS_LOOKUP.get(int(vehicle_position.current_status))
+            direction_id = (
+                int(trip.direction_id) if trip.HasField("direction_id") else None
+            )
+            current_status = _BUS_STATUS_LOOKUP.get(
+                int(vehicle_position.current_status)
+            )
 
             buses.append(
                 BusPosition(
@@ -261,7 +281,11 @@ def main():
 
     with open("unique_values.json", "w") as f:
         json.dump(
-            [train.to_json() for train in trains if train.station == "MEDICAL CENTER STATION"],
+            [
+                train.to_json()
+                for train in trains
+                if train.station == "MEDICAL CENTER STATION"
+            ],
             f,
             indent=4,
         )

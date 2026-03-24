@@ -3,7 +3,7 @@
 
   const BUS_MAP_DEFAULT_CENTER = [33.749, -84.388];
   const BUS_MAP_DEFAULT_ZOOM = 11;
-  const BUS_MAP_POLL_MS = 15000;
+  const BUS_MAP_POLL_MS = 10000;
   const ROUTE_COLOR_STORAGE_KEY = "marta-bus-route-colors-v1";
   const DEFAULT_VIEW = "arrivals";
 
@@ -66,7 +66,11 @@
         const targetPath = getPathForView(view);
         const currentPath = normalizePathname(window.location.pathname);
         if (targetPath !== currentPath) {
-          window.history[replaceHistory ? "replaceState" : "pushState"]({ view }, "", targetPath);
+          window.history[replaceHistory ? "replaceState" : "pushState"](
+            { view },
+            "",
+            targetPath,
+          );
         }
       }
       return;
@@ -80,7 +84,11 @@
 
     if (pushHistory) {
       const targetPath = getPathForView(view);
-      window.history[replaceHistory ? "replaceState" : "pushState"]({ view }, "", targetPath);
+      window.history[replaceHistory ? "replaceState" : "pushState"](
+        { view },
+        "",
+        targetPath,
+      );
     }
   }
 
@@ -145,12 +153,17 @@
     }
 
     const view = body.dataset.view;
-    const matchingButton = document.querySelector(`.nav-tab[data-view-target='${view}']`);
+    const matchingButton = document.querySelector(
+      `.nav-tab[data-view-target='${view}']`,
+    );
     if (!matchingButton) {
       return;
     }
 
-    setSingleActive(Array.from(document.querySelectorAll(".nav-tab")), matchingButton);
+    setSingleActive(
+      Array.from(document.querySelectorAll(".nav-tab")),
+      matchingButton,
+    );
   }
 
   function initArrivalsFilters(root) {
@@ -183,7 +196,9 @@
 
       button.dataset.bound = "true";
       button.addEventListener("click", () => {
-        const group = Array.from(document.querySelectorAll(".schedule-line-btn"));
+        const group = Array.from(
+          document.querySelectorAll(".schedule-line-btn"),
+        );
         setSingleActive(group, button);
       });
     });
@@ -202,26 +217,46 @@
       const dayPanels = Array.from(widget.querySelectorAll(".day-panel"));
 
       const activateDirection = (dayPanel, direction) => {
-        const dirButtons = Array.from(dayPanel.querySelectorAll(".direction-tab"));
-        const dirPanels = Array.from(dayPanel.querySelectorAll(".direction-panel"));
+        const dirButtons = Array.from(
+          dayPanel.querySelectorAll(".direction-tab"),
+        );
+        const dirPanels = Array.from(
+          dayPanel.querySelectorAll(".direction-panel"),
+        );
 
         let activeDirection = direction;
-        if (!dirButtons.find((button) => button.dataset.direction === direction)) {
-          activeDirection = dirButtons[0] ? dirButtons[0].dataset.direction : "";
+        if (
+          !dirButtons.find((button) => button.dataset.direction === direction)
+        ) {
+          activeDirection = dirButtons[0]
+            ? dirButtons[0].dataset.direction
+            : "";
         }
 
-        setSingleActive(dirButtons, dirButtons.find((button) => button.dataset.direction === activeDirection));
+        setSingleActive(
+          dirButtons,
+          dirButtons.find(
+            (button) => button.dataset.direction === activeDirection,
+          ),
+        );
 
         dirPanels.forEach((panel) => {
-          panel.classList.toggle("is-active", panel.dataset.directionPanel === activeDirection);
+          panel.classList.toggle(
+            "is-active",
+            panel.dataset.directionPanel === activeDirection,
+          );
         });
 
         currentDirection = activeDirection;
       };
 
       const activateDay = (day) => {
-        const activeDayButton = dayButtons.find((button) => button.dataset.day === day);
-        const activeDayPanel = dayPanels.find((panel) => panel.dataset.dayPanel === day);
+        const activeDayButton = dayButtons.find(
+          (button) => button.dataset.day === day,
+        );
+        const activeDayPanel = dayPanels.find(
+          (panel) => panel.dataset.dayPanel === day,
+        );
 
         if (!activeDayButton || !activeDayPanel) {
           return;
@@ -247,7 +282,10 @@
         });
       });
 
-      const firstDay = widget.dataset.defaultDay || (dayButtons[0] && dayButtons[0].dataset.day) || "";
+      const firstDay =
+        widget.dataset.defaultDay ||
+        (dayButtons[0] && dayButtons[0].dataset.day) ||
+        "";
       if (firstDay) {
         activateDay(firstDay);
       }
@@ -295,13 +333,24 @@
       return "Unknown";
     }
 
-    return parsed.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" });
+    return parsed.toLocaleTimeString([], {
+      hour: "numeric",
+      minute: "2-digit",
+      second: "2-digit",
+    });
   }
 
   function buildBusPopupContent(bus) {
-    const route = bus.route ? `Route ${escapeHtml(bus.route)}` : "Route unavailable";
-    const speed = typeof bus.speed_mph === "number" ? `${bus.speed_mph.toFixed(1)} mph` : "Speed unknown";
-    const status = bus.current_status ? escapeHtml(bus.current_status.replace(/_/g, " ")) : "status unavailable";
+    const route = bus.route
+      ? `Route ${escapeHtml(bus.route)}`
+      : "Route unavailable";
+    const speed =
+      typeof bus.speed_mph === "number"
+        ? `${bus.speed_mph.toFixed(1)} mph`
+        : "Speed unknown";
+    const status = bus.current_status
+      ? escapeHtml(bus.current_status.replace(/_/g, " "))
+      : "status unavailable";
     const updated = formatTimestamp(bus.last_updated);
 
     return `
@@ -320,7 +369,9 @@
       return;
     }
 
-    const segments = [`${payload.count} buses loaded at ${payload.loaded_at || "unknown time"}`];
+    const segments = [
+      `${payload.count} buses loaded at ${payload.loaded_at || "unknown time"}`,
+    ];
     if (routeValue) {
       segments.push(`Route ${routeValue}`);
     }
@@ -350,11 +401,17 @@
         count,
         color: getRouteColor(route),
       }))
-      .sort((a, b) => a.route.localeCompare(b.route, undefined, { numeric: true, sensitivity: "base" }));
+      .sort((a, b) =>
+        a.route.localeCompare(b.route, undefined, {
+          numeric: true,
+          sensitivity: "base",
+        }),
+      );
 
     legendSummary.textContent = `${entries.length} routes`;
     if (!entries.length) {
-      legendList.innerHTML = '<p class="buses-legend-empty">No active routes right now.</p>';
+      legendList.innerHTML =
+        '<p class="buses-legend-empty">No active routes right now.</p>';
       return;
     }
 
@@ -396,16 +453,23 @@
 
     const routeKeys = Array.from(
       new Set(
-        (payload.buses || []).map((bus) => String(bus.route || "").trim() || "unknown"),
+        (payload.buses || []).map(
+          (bus) => String(bus.route || "").trim() || "unknown",
+        ),
       ),
-    ).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
+    ).sort((a, b) =>
+      a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }),
+    );
     routeKeys.forEach((routeKey) => getRouteColor(routeKey));
 
     const activeMarkerIds = new Set();
     const activePositions = [];
 
     (payload.buses || []).forEach((bus) => {
-      if (typeof bus.latitude !== "number" || typeof bus.longitude !== "number") {
+      if (
+        typeof bus.latitude !== "number" ||
+        typeof bus.longitude !== "number"
+      ) {
         return;
       }
 
@@ -452,7 +516,10 @@
     }
 
     if (resetBounds || !busMapState.fitBoundsDone) {
-      busMapState.map.fitBounds(activePositions, { padding: [28, 28], maxZoom: 14 });
+      busMapState.map.fitBounds(activePositions, {
+        padding: [28, 28],
+        maxZoom: 14,
+      });
       busMapState.fitBoundsDone = true;
     }
   }
@@ -478,8 +545,10 @@
     for (const minDistance of minDistancePasses) {
       for (let attempt = 0; attempt < 720; attempt += 1) {
         const hue = (baseHue + attempt * 137.50776405003785) % 360;
-        const saturation = saturationLevels[(seed + attempt) % saturationLevels.length];
-        const lightness = lightnessLevels[(seed + attempt * 3) % lightnessLevels.length];
+        const saturation =
+          saturationLevels[(seed + attempt) % saturationLevels.length];
+        const lightness =
+          lightnessLevels[(seed + attempt * 3) % lightnessLevels.length];
         const candidate = hslToHex(hue, saturation, lightness);
 
         if (!firstAvailableColor && !colorAlreadyUsed(candidate)) {
@@ -542,7 +611,9 @@
 
   function persistRouteColorCache() {
     try {
-      const serialized = JSON.stringify(Object.fromEntries(busMapState.routeColorCache.entries()));
+      const serialized = JSON.stringify(
+        Object.fromEntries(busMapState.routeColorCache.entries()),
+      );
       window.localStorage.setItem(ROUTE_COLOR_STORAGE_KEY, serialized);
     } catch (_error) {
       // Ignore localStorage failures.
@@ -550,7 +621,9 @@
   }
 
   function colorAlreadyUsed(hexColor) {
-    return Array.from(busMapState.routeColorCache.values()).includes(hexColor.toLowerCase());
+    return Array.from(busMapState.routeColorCache.values()).includes(
+      hexColor.toLowerCase(),
+    );
   }
 
   function isColorDistinct(hexColor, minDistance) {
@@ -566,9 +639,9 @@
       }
 
       const distance = Math.sqrt(
-        ((candidate.r - compared.r) ** 2)
-        + ((candidate.g - compared.g) ** 2)
-        + ((candidate.b - compared.b) ** 2),
+        (candidate.r - compared.r) ** 2 +
+          (candidate.g - compared.g) ** 2 +
+          (candidate.b - compared.b) ** 2,
       );
       if (distance < minDistance) {
         return false;
@@ -579,7 +652,9 @@
   }
 
   function hexToRgb(hexColor) {
-    const normalized = String(hexColor || "").trim().toLowerCase();
+    const normalized = String(hexColor || "")
+      .trim()
+      .toLowerCase();
     if (!/^#[0-9a-f]{6}$/.test(normalized)) {
       return null;
     }
@@ -692,7 +767,10 @@
       updateBusMarkers(payload, resetBounds);
       updateBusLegend(payload);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Could not load bus positions.";
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Could not load bus positions.";
       updateBusError(message);
     } finally {
       busMapState.loading = false;
@@ -727,7 +805,9 @@
       attribution: "&copy; OpenStreetMap contributors",
     }).addTo(busMapState.map);
     busMapState.map.setView(BUS_MAP_DEFAULT_CENTER, BUS_MAP_DEFAULT_ZOOM);
-    window.requestAnimationFrame(() => busMapState.map && busMapState.map.invalidateSize());
+    window.requestAnimationFrame(
+      () => busMapState.map && busMapState.map.invalidateSize(),
+    );
 
     form.addEventListener("submit", (event) => {
       event.preventDefault();

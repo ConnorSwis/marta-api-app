@@ -3,7 +3,7 @@ import json
 import logging
 from enum import Enum
 from typing import Dict, Any
-from itsmarta_api.config import config
+from itsmarta_api.settings import config
 
 import httpx
 from bs4 import BeautifulSoup
@@ -88,6 +88,8 @@ def get_line_website(line: Lines) -> str:
 
 
 class AbsSchedule:
+    line: Lines
+
     async def refresh(self) -> None:
         await self._fetch_line_schedule()
 

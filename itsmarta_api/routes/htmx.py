@@ -8,10 +8,10 @@ from fastapi.requests import Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
-from itsmarta_api.marta.real_time import MARTA
-from itsmarta_api.marta.real_time.exceptions import APIKeyError, InvalidDirectionError
-from itsmarta_api.marta.real_time.vehicles import BusPosition, Train
-from itsmarta_api.schedules import Schedules
+from itsmarta_api.marta.realtime import MARTA
+from itsmarta_api.marta.realtime.exceptions import APIKeyError, InvalidDirectionError
+from itsmarta_api.marta.realtime.models import BusPosition, Train
+from itsmarta_api.services.rail_schedules import Schedules
 
 LINE_KEYS = ("red", "gold", "blue", "green")
 _DIRECTION_LOOKUP = {
