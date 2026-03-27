@@ -236,6 +236,51 @@
     });
   }
 
+  function initArrivalsStationDropdowns(root) {
+    const stationsSection =
+      root.id === "stations" ? root : root.querySelector("#stations");
+    if (!stationsSection) {
+      return;
+    }
+
+    const dropdowns = Array.from(
+      stationsSection.querySelectorAll("[data-station-dropdown]"),
+    );
+    if (!dropdowns.length) {
+      return;
+    }
+
+    const expandAllButton = stationsSection.querySelector("#arrivals-expand-all");
+    const updateExpandAllButtonLabel = () => {
+      if (!expandAllButton) {
+        return;
+      }
+      const allOpen = dropdowns.every((dropdown) => dropdown.open);
+      expandAllButton.textContent = allOpen ? "Collapse all" : "Expand all";
+    };
+
+    dropdowns.forEach((dropdown) => {
+      if (dropdown.dataset.bound === "true") {
+        return;
+      }
+      dropdown.dataset.bound = "true";
+      dropdown.addEventListener("toggle", updateExpandAllButtonLabel);
+    });
+
+    if (expandAllButton && expandAllButton.dataset.bound !== "true") {
+      expandAllButton.dataset.bound = "true";
+      expandAllButton.addEventListener("click", () => {
+        const shouldOpen = !dropdowns.every((dropdown) => dropdown.open);
+        dropdowns.forEach((dropdown) => {
+          dropdown.open = shouldOpen;
+        });
+        updateExpandAllButtonLabel();
+      });
+    }
+
+    updateExpandAllButtonLabel();
+  }
+
   function initScheduleLineButtons(root) {
     root.querySelectorAll(".schedule-line-btn").forEach((button) => {
       if (button.dataset.bound === "true") {
@@ -1976,6 +2021,7 @@
     initNavigation(document);
     syncNavigationFromView(root);
     initArrivalsFilters(root);
+    initArrivalsStationDropdowns(root);
     initScheduleLineButtons(root);
     initScheduleWidgets(root);
     initBusMap();

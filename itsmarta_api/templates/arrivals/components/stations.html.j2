@@ -13,6 +13,17 @@
       {% if context.direction %} | {{ context.direction | upper }}{% endif %}
       {% if context.query %} | "{{ context.query }}"{% endif %}
     </p>
+    {% if context.trains %}
+    <div class="arrivals-summary-actions">
+      <button
+        type="button"
+        id="arrivals-expand-all"
+        class="btn btn-secondary btn-small arrivals-expand-all"
+      >
+        Expand all
+      </button>
+    </div>
+    {% endif %}
   </div>
 
   {% if context.error %}
@@ -25,8 +36,11 @@
   <div class="stations-grid-inner">
     {% for station, station_trains in context.trains | groupby('station') %}
     {% set sorted_trains = station_trains | sort(attribute='waiting_seconds') %}
-    <article class="station-card">
-      <h3 class="station-title">{{ station | replace(' STATION', '') }}</h3>
+    <details class="station-card station-dropdown" data-station-dropdown>
+      <summary class="station-summary">
+        <h3 class="station-title">{{ station | replace(' STATION', '') }}</h3>
+        <span class="station-summary-caret" aria-hidden="true"></span>
+      </summary>
       <ul class="train-list">
         {% for train in sorted_trains[:context.per_station] %}
         <li class="train-row">
@@ -47,7 +61,7 @@
         </li>
         {% endfor %}
       </ul>
-    </article>
+    </details>
     {% endfor %}
   </div>
   {% endif %}

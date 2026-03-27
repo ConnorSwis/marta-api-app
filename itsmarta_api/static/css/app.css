@@ -320,6 +320,14 @@ input {
   font-size: 0.86rem;
 }
 
+.arrivals-summary-actions {
+  margin-left: auto;
+}
+
+.arrivals-expand-all {
+  display: none;
+}
+
 .error-banner {
   border: 1px solid rgba(185, 28, 28, 0.4);
   background: #fef2f2;
@@ -343,13 +351,15 @@ input {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 10px;
+  align-items: start;
 }
 
 .station-card {
   border-radius: 8px;
   border: 1px solid var(--border);
   background: #ffffff;
-  padding: 12px;
+  padding: 0;
+  overflow: hidden;
 }
 
 .station-title {
@@ -357,12 +367,56 @@ input {
   font-size: 1rem;
 }
 
+.station-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+  list-style: none;
+  padding: 12px;
+}
+
+.station-summary::-webkit-details-marker {
+  display: none;
+}
+
+.station-summary::marker {
+  content: "";
+}
+
+.station-summary-caret {
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--ink-500);
+  border-bottom: 2px solid var(--ink-500);
+  transform: rotate(45deg);
+  transition: transform 150ms ease;
+  flex: 0 0 auto;
+}
+
+.station-dropdown[open] .station-summary {
+  border-bottom: 1px solid #ece8e2;
+}
+
+.station-dropdown[open] .station-summary-caret {
+  transform: rotate(-135deg);
+}
+
 .train-list {
-  margin: 10px 0 0;
-  padding: 0;
+  margin: 0;
+  padding: 10px 12px 12px;
   list-style: none;
   display: grid;
   gap: 6px;
+}
+
+.station-dropdown:not([open]) .train-list {
+  display: none;
+}
+
+.station-dropdown[open] .train-list {
+  display: grid;
 }
 
 .train-row {
@@ -1148,6 +1202,12 @@ input {
   color: #57534e;
 }
 
+@media (min-width: 681px) {
+  .arrivals-expand-all {
+    display: inline-flex;
+  }
+}
+
 .placeholder {
   padding: 22px;
   text-align: center;
@@ -1211,9 +1271,41 @@ input {
 }
 
 @media (max-width: 680px) {
+  html,
+  body {
+    height: auto;
+    min-height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .app-shell {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
   .topbar {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .view-body {
+    flex: 0 0 auto;
+    width: calc(100% - 20px);
+    margin: 10px auto 14px;
+    overflow: visible;
+  }
+
+  .view-body[data-view="arrivals"],
+  .view-body[data-view="schedules"],
+  .view-body[data-view="reliability"],
+  .view-body[data-view="buses"] {
+    grid-template-rows: auto auto;
+  }
+
+  .view-body[data-view="schedules"] #schedule-content {
+    overflow: visible;
   }
 
   .nav-tabs {
@@ -1256,11 +1348,20 @@ input {
   }
 
   .train-row {
-    grid-template-columns: auto 1fr;
+    grid-template-columns: 1.75rem 1fr auto;
     gap: 6px;
   }
 
-  .train-wait {
+  .train-row .line-pill {
+    width: 1.75rem;
+    height: 1.75rem;
+    min-width: 1.75rem;
+    padding: 0;
+    border-radius: 6px;
     justify-self: start;
+  }
+
+  .train-wait {
+    justify-self: end;
   }
 }
